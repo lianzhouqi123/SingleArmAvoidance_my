@@ -53,7 +53,7 @@ if not os.path.exists(save_file):
 return_list = rl.train2(env, agent, num_episodes, replay_buffer, minimal_size, batch_size, num_iteration, save_file)
 
 torch.save(agent.actor.state_dict(), 'actor_result_4_2_2tran2_3_act2.pth')
-torch.save(agent.critic_1.state_dict(), 'critic_1_result_4_2_2ttran2_3_act2.pth')
+torch.save(agent.critic_1.state_dict(), 'critic_1_result_4_2_2tran2_3_act2.pth')
 torch.save(agent.critic_2.state_dict(), 'critic_2_result_4_2_2tran2_3_act2.pth')
 
 with open('return_list_4_2_2tran2_3_act2.csv', 'w', newline='') as f:
