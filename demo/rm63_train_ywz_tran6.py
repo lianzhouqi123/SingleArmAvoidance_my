@@ -36,7 +36,7 @@ num_iteration = 3  # 一回合训练次数
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-replay_buffer = rl.ReplayBuffer_2con(buffer_size)
+replay_buffer = rl.ReplayBuffer(buffer_size)
 replay_buffer_offline = rl.ReplayBuffer(buffer_size)
 # 待训练的新模型
 agent = TD3.TD3Continuous(n_features, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,

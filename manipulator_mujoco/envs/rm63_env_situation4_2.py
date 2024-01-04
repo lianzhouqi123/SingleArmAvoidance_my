@@ -171,6 +171,7 @@ class Rm63Env_s4_2(gym.Env):
         dis_o = np.min(o_a_distance)  # 距离中心的距离，非距离边界距离
         # reward
         rg, rc, wo_pos, wo_neg, wt_pos, wt_neg, d_danger = 20000, -250, 100, 500, -100, -5000, 0.05 + self.obstacle_size
+        ct, delta = 1000, 0.2
         # R_T 终点
         d_t_tran = self._Rm63_controller.distance(self.target_pose)  # 位置
         d_t_pos = self._Rm63_controller.get_end_dis(self.target_pose)  # 姿态
@@ -180,27 +181,27 @@ class Rm63Env_s4_2(gym.Env):
         # else:
         #     r_avoid = wo_neg * (dis_o - dis_o_old)
         r_avoid = self.obstacle_parameter_b/(dis_o+self.obstacle_parameter_a)
-        if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
-            r_target = wt_neg * (dis_t - dis_t_old) - dis_t
+        if dis_t < delta:
+            r_target = -dis_t ** 2 / 2
         else:
-            r_target = - dis_t
+            r_target = -delta * (dis_t - delta / 2)
+        r_target = ct * r_target
+        # if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
+        #     r_target = wt_neg * (dis_t - dis_t_old) - dis_t
+        # else:
+        #     r_target = - dis_t
             # r_target = wt_pos * (dis_t - dis_t_old)
         if dis_t < self.reach_level:  # 到终点
             reward = rg
             done = True
             terminated = True
-        elif contact != 0:  # 碰障碍物
+        elif contact != 0 or dis_o < self.obstacle_size:  # 碰障碍物
             reward = rc
-            done = False
-            terminated = False
             self.flag_cont = True
-        elif dis_o < d_danger:  # 进入障碍物的危险距离
-            if dis_o < self.obstacle_size:
-                reward = rc
-            else:
-                reward = r_avoid
-        else:  # 未进入障碍物危险距离
+        else:  # 未到达终点
             reward = r_target
+            if dis_o < d_danger:  # 进入障碍物的危险距离
+                reward += r_avoid
 
         if self.step_count >= self.step_max - 1 and done == False:  # 循环次数过多
             done = True

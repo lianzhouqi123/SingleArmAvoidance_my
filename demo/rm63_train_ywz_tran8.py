@@ -27,17 +27,16 @@ noise_clip = 0.01
 exploration_noise = 0.008  # 噪声标准差
 policy_delay = 2
 
-num_episodes = 6000  # 总训练循环数
+num_episodes = 5000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
-batch_size = 256  # 取样样本数
+batch_size = 128  # 取样样本数
 num_iteration = 3  # 一回合训练次数
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-replay_buffer = rl.ReplayBuffer_2con(buffer_size)
-replay_buffer_offline = rl.ReplayBuffer(buffer_size)
+replay_buffer = rl.ReplayBuffer(buffer_size)
 # 待训练的新模型
 agent = TD3.TD3Continuous(n_features, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,
                           exploration_noise, gamma, policy_delay, tau, actor_lr, critic_lr, device)

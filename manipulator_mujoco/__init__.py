@@ -64,3 +64,8 @@ register(
     id="Rm63Env-s5-2",
     entry_point="manipulator_mujoco.envs:Rm63Env_s5_2",
 )
+
+register(
+    id="Rm63Env-s1-2",
+    entry_point="manipulator_mujoco.envs:Rm63Env_s1_2",
+)
