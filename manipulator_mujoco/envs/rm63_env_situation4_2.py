@@ -38,6 +38,8 @@ class Rm63Env_s4_2(gym.Env):
                  obstacle_pos_range=[0.4, 0.4, 0.4],  # 障碍物位置采采样范围
                  obstacle_radiance_fixed=0.05,  # 障碍物预设半径
                  seg_num=[10, 10, 40, 10, 30, 10, 10, 10, 10],  # 机械臂包络判定球
+                 obstacle_parameter_a=-0.04958,  # 障碍物避障奖励因子a
+                 obstacle_parameter_b=-0.50420,  # 障碍物避障奖励因子b
                  ):
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(22,), dtype=np.float32
@@ -55,6 +57,8 @@ class Rm63Env_s4_2(gym.Env):
         self.pose_range = pose_range
         self.obstacle_pos_range = obstacle_pos_range
         self.seg_num = seg_num
+        self.obstacle_parameter_a = obstacle_parameter_a
+        self.obstacle_parameter_b = obstacle_parameter_b
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self._render_mode = render_mode
@@ -166,19 +170,21 @@ class Rm63Env_s4_2(gym.Env):
         # R_O 障碍
         dis_o = np.min(o_a_distance)  # 距离中心的距离，非距离边界距离
         # reward
-        rg, rc, wo_pos, wo_neg, wt_pos, wt_neg, d_danger = 20000, -250, 1000, 5000, -1000, -5000, 0.2 + self.obstacle_size
+        rg, rc, wo_pos, wo_neg, wt_pos, wt_neg, d_danger = 20000, -250, 100, 500, -100, -5000, 0.05 + self.obstacle_size
         # R_T 终点
         d_t_tran = self._Rm63_controller.distance(self.target_pose)  # 位置
         d_t_pos = self._Rm63_controller.get_end_dis(self.target_pose)  # 姿态
         dis_t = d_t_tran
-        if dis_o - dis_o_old > 0:  # 往远处走正收益，系数更小，防止反复横跳
-            r_avoid = wo_pos * (dis_o - dis_o_old)
-        else:
-            r_avoid = wo_neg * (dis_o - dis_o_old)
+        # if dis_o - dis_o_old > 0:  # 往远处走正收益，系数更小，防止反复横跳
+        #     r_avoid = wo_pos * (dis_o - dis_o_old)
+        # else:
+        #     r_avoid = wo_neg * (dis_o - dis_o_old)
+        r_avoid = self.obstacle_parameter_b/(dis_o+self.obstacle_parameter_a)
         if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
-            r_target = wt_neg * (dis_t - dis_t_old)
+            r_target = wt_neg * (dis_t - dis_t_old) - dis_t
         else:
-            r_target = wt_pos * (dis_t - dis_t_old)
+            r_target = - dis_t
+            # r_target = wt_pos * (dis_t - dis_t_old)
         if dis_t < self.reach_level:  # 到终点
             reward = rg
             done = True
@@ -189,7 +195,10 @@ class Rm63Env_s4_2(gym.Env):
             terminated = False
             self.flag_cont = True
         elif dis_o < d_danger:  # 进入障碍物的危险距离
-            reward = r_avoid
+            if dis_o < self.obstacle_size:
+                reward = rc
+            else:
+                reward = r_avoid
         else:  # 未进入障碍物危险距离
             reward = r_target
 
@@ -273,7 +282,7 @@ class Rm63Env_s4_2(gym.Env):
 
         return observation, reward, done, terminated, info
 
-    @ property
+    @property
     def contact_detect(self):
         contact = self._physics.data.ncon
         return contact

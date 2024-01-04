@@ -27,11 +27,11 @@ noise_clip = 0.01
 exploration_noise = 0.008  # 噪声标准差
 policy_delay = 2
 
-num_episodes = 6000  # 总训练循环数
+num_episodes = 5000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
-batch_size = 512  # 取样样本数
-num_iteration = 5  # 一回合训练次数
+batch_size = 256  # 取样样本数
+num_iteration = 3  # 一回合训练次数
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
@@ -46,17 +46,17 @@ critic_1_path_2 = "2_3_tran1_obs1/critic_1_2.pth"
 critic_2_path_2 = "2_3_tran1_obs1/critic_2_2.pth"
 agent.load_net_para(actor_path=actor_path_2, critic_1_path=critic_1_path_2, critic_2_path=critic_2_path_2)
 
-save_file = "4_2_1tran2_3_act2"
+save_file = "4_2_3tran2_3_act2"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
 return_list = rl.train2(env, agent, num_episodes, replay_buffer, minimal_size, batch_size, num_iteration, save_file)
 
-torch.save(agent.actor.state_dict(), 'actor_result_4_2_1tran2_3_act2.pth')
-torch.save(agent.critic_1.state_dict(), 'critic_1_result_4_2_1tran2_3_act2.pth')
-torch.save(agent.critic_2.state_dict(), 'critic_2_result_4_2_1tran2_3_act2.pth')
+torch.save(agent.actor.state_dict(), 'actor_result_4_2_3tran2_3_act2.pth')
+torch.save(agent.critic_1.state_dict(), 'critic_1_result_4_2_3tran2_3_act2.pth')
+torch.save(agent.critic_2.state_dict(), 'critic_2_result_4_2_3tran2_3_act2.pth')
 
-with open('return_list_4_2_1tran2_3_act2.csv', 'w', newline='') as f:
+with open('return_list_4_2_3tran2_3_act2.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(return_list)
 
