@@ -1,0 +1,2 @@
+from manipulator_mujoco.obstacles.inv_pendulum import Inv_pendulum
+from manipulator_mujoco.obstacles.obstacle import Obstacle

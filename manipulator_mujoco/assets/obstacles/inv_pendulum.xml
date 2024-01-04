@@ -1,0 +1,37 @@
+<mujoco model="inv_pendulum">
+    <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+<!--    <size njmax="500" nconmax="100" />-->
+<!--    <option timestep="0.010" gravity="0 0 -9.80665" />-->
+    <asset>
+        <mesh name="obstacle_base_link" file="obstacle_base_link.STL" />
+        <mesh name="obstacle_link1" file="obstacle_link1.STL" />
+        <mesh name="obstacle_link2" file="obstacle_link2.STL" />
+    </asset>
+    <worldbody>
+        <body name="obstacle_base_link" pos="-0.3 0 0" quat="0.707 0.707 0 0">
+            <geom type="mesh" name="obstacle_base_link" contype="0" conaffinity="0" group="1" rgba="1 1 1 1" mesh="obstacle_base_link" condim="1"/>
+            <body name="obstacle_link1" pos="0 0 0" quat="0.707 0 0.707 0">
+                <inertial pos="0 0.15 0" mass="0.722837" diaginertia="0.0079476 0.0003369 0.0078975"/>
+                <joint name="obstacle_joint1" pos="0 0 0" axis="0 0 1" limited="true" range="-3.107 3.107" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="1 1 1 1" mesh="obstacle_link1" condim="1"/>
+<!--                contype = 0 : 不参与碰撞检测   -->
+                <body name="obstacle_link2" pos="0 0.3 0" quat="1 0 0 0">
+                    <inertial pos="0 0 0" mass="0.408407" diaginertia="0.0004084 0.0004084 0.0004084" />
+                    <joint name="obstacle_joint2" pos="0 0 0" axis="0 1 0" limited="true" range="-3.107 3.107" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="1 1 1 1" mesh="obstacle_link2" condim="1"/>
+                    <site name="eef_site" pos="0 0 0" rgba="1 0 0 1" size="0.01" type="sphere" />
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <motor name='obstacle_joint1_T' ctrllimited="true" ctrlrange="-3.107 3.107" joint='obstacle_joint1' gear='1'/>
+        <motor name='obstacle_joint2_T' ctrllimited="true" ctrlrange="-3.107 3.107" joint='obstacle_joint2' gear='1'/>
+    </actuator>
+
+<!--    <contact>-->
+<!--        <exclude body1="obstacle_base_link" body2="obstacle_link1"/>-->
+<!--        <exclude body1="obstacle_link1" body2="obstacle_link2"/>-->
+<!--    </contact>-->
+</mujoco>

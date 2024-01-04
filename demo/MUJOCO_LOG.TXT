@@ -1,0 +1,237 @@
+Thu Oct 12 21:06:12 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 12 21:11:53 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 12 21:14:40 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 12 21:20:46 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 12 21:23:44 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 14 15:37:18 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 14 15:38:32 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 14 16:17:35 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 14 16:59:20 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 14 17:01:38 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 14:10:21 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 14:11:56 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 14:31:04 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 15:37:01 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 19:11:11 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 19:21:57 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 18 19:22:34 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 10:13:21 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 10:20:33 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 10:55:58 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:03:20 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:03:51 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:04:18 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:06:24 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:08:17 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:10:30 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:15:34 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 11:16:30 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 12:53:24 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 12:55:27 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 15:11:08 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 15:28:12 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 16:30:21 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 16:34:16 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 18:32:05 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 18:38:40 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 18:40:50 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 18:42:58 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 22:17:07 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 19 23:11:20 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 09:35:29 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 12:30:51 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 12:33:29 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 12:40:31 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 12:43:13 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 14:35:16 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 14:37:48 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 14:44:27 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 14:49:11 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 15:27:32 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 15:28:45 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Fri Oct 20 15:30:37 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 21 16:13:49 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 21 16:43:17 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sat Oct 21 17:00:39 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 09:56:29 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 09:58:08 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 09:59:41 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 10:00:10 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 10:02:31 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 10:05:17 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 10:27:08 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 10:27:54 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 11:08:16 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 11:20:14 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 17:27:09 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 21:02:20 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 21:13:18 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 21:14:46 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 21:18:59 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Sun Oct 22 21:51:12 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Mon Oct 23 09:57:56 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Mon Oct 23 09:58:31 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Mon Oct 23 10:00:12 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Mon Oct 23 10:00:36 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Tue Oct 24 10:37:45 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 25 09:29:59 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Wed Oct 25 09:34:10 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
+Thu Oct 26 21:28:29 2023
+ERROR: mjv_updateSceneState: m->nu changed
+
