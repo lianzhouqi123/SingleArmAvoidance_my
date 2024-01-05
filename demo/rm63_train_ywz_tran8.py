@@ -20,7 +20,7 @@ torch.manual_seed(0)
 gamma = 0.98  # 更新学习率
 tau = 0.003  # 软更新参数
 actor_lr = 1e-4  # actor优化器学习率
-critic_lr = 1e-4  # critic优化器学习率
+critic_lr = 2e-4  # critic优化器学习率
 n_hiddens = 128  # 隐藏层宽度
 policy_noise = 0.01
 noise_clip = 0.01

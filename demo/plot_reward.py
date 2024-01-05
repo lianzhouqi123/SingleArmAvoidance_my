@@ -4,7 +4,7 @@ import pandas as pd
 import rl_utils_ywz as rl
 
 # filename = 'return_list_3_5_tran1_obs1.csv'
-filename = '2_3_tran1_obs1/return_list_11.csv'
+filename = '2_2_1/return_list_9.csv'
 
 df = pd.read_csv(filename, header=None)
 return_list = df.values.reshape(-1)

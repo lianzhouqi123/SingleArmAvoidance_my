@@ -171,7 +171,7 @@ class Rm63Env_s4_2(gym.Env):
         dis_o = np.min(o_a_distance)  # 距离中心的距离，非距离边界距离
         # reward
         rg, rc, wo_pos, wo_neg, wt_pos, wt_neg, d_danger = 20000, -250, 100, 500, -100, -5000, 0.05 + self.obstacle_size
-        ct, delta = 1000, 0.2
+        ct, delta, delta2 = 20, 0.2, 0.2
         # R_T 终点
         d_t_tran = self._Rm63_controller.distance(self.target_pose)  # 位置
         d_t_pos = self._Rm63_controller.get_end_dis(self.target_pose)  # 姿态
@@ -182,9 +182,9 @@ class Rm63Env_s4_2(gym.Env):
         #     r_avoid = wo_neg * (dis_o - dis_o_old)
         r_avoid = self.obstacle_parameter_b/(dis_o+self.obstacle_parameter_a)
         if dis_t < delta:
-            r_target = -dis_t ** 2 / 2
+            r_target = -(dis_t + delta2) ** 2 / 2
         else:
-            r_target = -delta * (dis_t - delta / 2)
+            r_target = -delta * ((dis_t + delta2) - delta / 2)
         r_target = ct * r_target
         # if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
         #     r_target = wt_neg * (dis_t - dis_t_old) - dis_t
@@ -413,7 +413,7 @@ class Rm63Env_s4_2(gym.Env):
 
         return self.obstacle_step_position
 
-    def target_sample(self, pos_range: list, mode: str, ori_pos: list = [0, 0, 0]):
+    def target_sample(self, pos_range: list, mode: str, ori_pos: list = [0, 0, 0], obs_flag=True):
         """
         Purpose: sample the target position in space, with specified range
         In this stage, we set up the target and the obstacle in the same box space
@@ -431,12 +431,13 @@ class Rm63Env_s4_2(gym.Env):
                                          1, 0, 0, 0])
             distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
             # if target pose show up inner of the obstacle, resample the target pose
-            while distance_t_o <= self.obstacle_size + self.reach_level + 0.01:
-                self.target_pose = np.array([self.target_original_pos[0] + pos_range[0] * np.random.random(),
-                                             self.target_original_pos[1] + pos_range[1] * np.random.random(),
-                                             self.target_original_pos[2] + pos_range[2] * np.random.random(),
-                                             1, 0, 0, 0])
-                distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
+            if obs_flag:
+                while distance_t_o <= self.obstacle_size + self.reach_level + 0.01:
+                    self.target_pose = np.array([self.target_original_pos[0] + pos_range[0] * np.random.random(),
+                                                 self.target_original_pos[1] + pos_range[1] * np.random.random(),
+                                                 self.target_original_pos[2] + pos_range[2] * np.random.random(),
+                                                 1, 0, 0, 0])
+                    distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
             self._target.set_mocap_pose(self._physics,
                                         position=self.target_pose[0:3],
                                         quaternion=self.target_pose[3:]

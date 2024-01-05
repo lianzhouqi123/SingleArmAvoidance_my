@@ -17,7 +17,7 @@ from manipulator_mujoco.utils.fkine import arm_obstacle_distance_detection
 import math as m
 
 """
-env_situation1: 固定目标，随机初始,碰撞不停,无障碍
+env_situation1: 固定目标，固定初始,碰撞不停,无障碍
 """
 
 
@@ -218,7 +218,7 @@ class Rm63Env_s1_2(gym.Env):
             # self._physics.bind(self._arm.joints).qacc[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         # init the position of the target
-        self.target_sample(mode="fixed_sample_mode", pos_range=self.pose_range)
+        self.target_sample(mode="fixed_sample_mode", pos_range=self.pose_range, obs_flag=False)
 
         if self._render_mode == "human":
             self._render_frame()
@@ -383,7 +383,7 @@ class Rm63Env_s1_2(gym.Env):
 
         return self.obstacle_step_position
 
-    def target_sample(self, pos_range: list, mode: str, ori_pos: list = [0, 0, 0]):
+    def target_sample(self, pos_range: list, mode: str, ori_pos: list = [0, 0, 0], obs_flag=True):
         """
         Purpose: sample the target position in space, with specified range
         In this stage, we set up the target and the obstacle in the same box space
@@ -401,12 +401,13 @@ class Rm63Env_s1_2(gym.Env):
                                          1, 0, 0, 0])
             distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
             # if target pose show up inner of the obstacle, resample the target pose
-            while distance_t_o <= self.obstacle_size + self.reach_level + 0.01:
-                self.target_pose = np.array([self.target_original_pos[0] + pos_range[0] * np.random.random(),
-                                             self.target_original_pos[1] + pos_range[1] * np.random.random(),
-                                             self.target_original_pos[2] + pos_range[2] * np.random.random(),
-                                             1, 0, 0, 0])
-                distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
+            if obs_flag:
+                while distance_t_o <= self.obstacle_size + self.reach_level + 0.01:
+                    self.target_pose = np.array([self.target_original_pos[0] + pos_range[0] * np.random.random(),
+                                                 self.target_original_pos[1] + pos_range[1] * np.random.random(),
+                                                 self.target_original_pos[2] + pos_range[2] * np.random.random(),
+                                                 1, 0, 0, 0])
+                    distance_t_o = np.linalg.norm(self.obstacle_pos - self.target_pose[:3])
             self._target.set_mocap_pose(self._physics,
                                         position=self.target_pose[0:3],
                                         quaternion=self.target_pose[3:]

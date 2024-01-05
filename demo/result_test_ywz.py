@@ -6,16 +6,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 # 验证已训练好的模型
 
-my_render_mode = 'human'
-# my_render_mode = "rgb_array"
-env = gym.make('Rm63Env-s4-2', render_mode=my_render_mode)
+# 测试参数
+env_id = "Rm63Env-s4-2"
+actor_path = "4_2_3tran2_3_act2/actor_9.pth"
+n_episodes = 1000  # 测试循环数
+test_mode = "correct_ratio"  # 正确率模式，不显示图形，不进行延时
+test_mode = "show"  # 展示模式，显示图形，并对每步进行延时
+
+if test_mode == "show":
+    my_render_mode = "human"
+else:
+    my_render_mode = "rgb_array"
+env = gym.make(env_id, render_mode=my_render_mode)
 action_bound = env.action_space.high[0]
 actor = Actor(22, 128, 6, action_bound)
-# actor.load_state_dict(torch.load('actor_result_3_5_tran1_obs1.pth'))
-actor.load_state_dict(torch.load('4_1_1tran2_3_act2/actor_8.pth'))
+actor.load_state_dict(torch.load(actor_path))
 actor.eval()
 
-n_episodes = 1000
 i_terminate = 0
 episode_reward = 0
 reward_list = []
@@ -35,13 +42,15 @@ for ii in range(n_episodes):
             if env.contact_detect != 0:
                 terminate = False
                 break
-            time.sleep(0.03)
+            if test_mode == "show":
+                time.sleep(0.03)
             state = next_state
         reward_list = np.append(reward_list, episode_reward)
         print(terminate)
         if terminate:
             i_terminate += 1
-        time.sleep(0.3)
+        if test_mode == "show":
+            time.sleep(0.3)
 print("成功率为：{:.2f}%".format(i_terminate/n_episodes*100))
 
 episodes_list = list(range(len(reward_list)))

@@ -12,3 +12,4 @@ from manipulator_mujoco.envs.rm63_env_situation4_1_1 import Rm63Env_s4_1_1
 from manipulator_mujoco.envs.rm63_env_situation4_2 import Rm63Env_s4_2
 from manipulator_mujoco.envs.rm63_env_situation5_2 import Rm63Env_s5_2
 from manipulator_mujoco.envs.rm63_env_situation1_2 import Rm63Env_s1_2
+from manipulator_mujoco.envs.rm63_env_situation2_2 import Rm63Env_s2_2
