@@ -40,9 +40,9 @@ replay_buffer = rl.ReplayBuffer(buffer_size)
 # 待训练的新模型
 agent = TD3.TD3Continuous(n_features, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,
                           exploration_noise, gamma, policy_delay, tau, actor_lr, critic_lr, device)
-actor_path_2 = "actor_result_1_2_1.pth"
-critic_1_path_2 = "critic_1_result_1_2_1.pth"
-critic_2_path_2 = "critic_2_result_1_2_1.pth"
+actor_path_2 = "1_2_1/actor_3.pth"
+critic_1_path_2 = "1_2_1/critic_1_3.pth"
+critic_2_path_2 = "1_2_1/critic_2_3.pth"
 agent.load_net_para(actor_path=actor_path_2, critic_1_path=critic_1_path_2, critic_2_path=critic_2_path_2)
 
 save_file = "2_2_2"

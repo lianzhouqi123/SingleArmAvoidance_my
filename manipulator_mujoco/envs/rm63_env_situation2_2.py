@@ -171,7 +171,7 @@ class Rm63Env_s2_2(gym.Env):
         if dis_t < delta:
             r_target = -(dis_t + delta2) ** 2 / 2
         else:
-            r_target = -delta * ((dis_t + delta2) - delta / 2)
+            r_target = -(dis_t + delta2) * ((dis_t + delta2) - (delta + delta2) / 2)
         r_target = ct * r_target
         # if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
         #     r_target = wt * (dis_t - dis_t_old) - 100 * dis_t

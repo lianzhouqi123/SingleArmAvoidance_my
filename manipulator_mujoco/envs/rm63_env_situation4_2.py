@@ -171,7 +171,7 @@ class Rm63Env_s4_2(gym.Env):
         dis_o = np.min(o_a_distance)  # 距离中心的距离，非距离边界距离
         # reward
         rg, rc, wo_pos, wo_neg, wt_pos, wt_neg, d_danger = 20000, -250, 100, 500, -100, -5000, 0.05 + self.obstacle_size
-        ct, delta, delta2 = 20, 0.2, 0.2
+        ca, ct, delta, delta2 = 10, 200, 0.2, 0.2
         # R_T 终点
         d_t_tran = self._Rm63_controller.distance(self.target_pose)  # 位置
         d_t_pos = self._Rm63_controller.get_end_dis(self.target_pose)  # 姿态
@@ -180,11 +180,11 @@ class Rm63Env_s4_2(gym.Env):
         #     r_avoid = wo_pos * (dis_o - dis_o_old)
         # else:
         #     r_avoid = wo_neg * (dis_o - dis_o_old)
-        r_avoid = self.obstacle_parameter_b/(dis_o+self.obstacle_parameter_a)
+        r_avoid = ca * self.obstacle_parameter_b/(dis_o+self.obstacle_parameter_a)
         if dis_t < delta:
             r_target = -(dis_t + delta2) ** 2 / 2
         else:
-            r_target = -delta * ((dis_t + delta2) - delta / 2)
+            r_target = -(dis_t + delta2) * ((dis_t + delta2) - (delta + delta2) / 2)
         r_target = ct * r_target
         # if dis_t - dis_t_old > 0:  # 往远处走负收益，系数更大，防止反复横跳
         #     r_target = wt_neg * (dis_t - dis_t_old) - dis_t
