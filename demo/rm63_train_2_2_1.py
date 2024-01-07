@@ -30,7 +30,7 @@ policy_delay = 2
 num_episodes = 4000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
-batch_size = 256  # 取样样本数
+batch_size = 64  # 取样样本数
 num_iteration = 1  # 一回合训练次数
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
