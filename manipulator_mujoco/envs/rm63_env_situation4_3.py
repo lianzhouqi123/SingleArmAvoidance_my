@@ -171,7 +171,7 @@ class Rm63Env_s4_3(gym.Env):
         dis_o = np.min(o_a_distance)  # 距离中心的距离，非距离边界距离
         dis_safe = dis_o - self.obstacle_size
         # reward
-        rg, rc = 20000, 250
+        rg, rc = 20000, -250
         ca, obs_p1, obs_p2, d_danger = -1, 3, 0.025, 0.05
         ct, delta, delta2 = 200, 0.2, 0.2
         # R_T 终点
