@@ -37,9 +37,7 @@ class Rm63Env_s4_3(gym.Env):
                  obstacle_original_pos=[-0.7, -0.2, 0.1],  # 障碍物位置采样原点
                  obstacle_pos_range=[0.4, 0.4, 0.4],  # 障碍物位置采采样范围
                  obstacle_radiance_fixed=0.05,  # 障碍物预设半径
-                 seg_num=[10, 10, 40, 10, 30, 10, 10, 10, 10],  # 机械臂包络判定球
-                 obstacle_parameter_a=-0.04958,  # 障碍物避障奖励因子a
-                 obstacle_parameter_b=-0.50420,  # 障碍物避障奖励因子b
+                 seg_num=[30, 30, 100, 30, 90, 30, 30, 30, 30],  # 机械臂包络判定球
                  ):
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(22,), dtype=np.float32
@@ -57,8 +55,6 @@ class Rm63Env_s4_3(gym.Env):
         self.pose_range = pose_range
         self.obstacle_pos_range = obstacle_pos_range
         self.seg_num = seg_num
-        self.obstacle_parameter_a = obstacle_parameter_a
-        self.obstacle_parameter_b = obstacle_parameter_b
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self._render_mode = render_mode
@@ -139,7 +135,7 @@ class Rm63Env_s4_3(gym.Env):
         # 末端距离差值（1*1）
         distance = [self._Rm63_controller.distance(target_pose)]
         # 障碍球位置大小（1*4）
-        obstacle = np.hstack([self.obstacle_step_position, np.array([self.obstacle_size])]).reshape([4])
+        obstacle = np.hstack([self.obstacle_pos, np.array([self.obstacle_size])]).reshape([4])
 
         observation = np.concatenate(
             (
@@ -172,7 +168,7 @@ class Rm63Env_s4_3(gym.Env):
         dis_safe = dis_o - self.obstacle_size
         # reward
         rg, rc = 20000, -250
-        ca, obs_p1, obs_p2, d_danger = -1, 3, 0.025, 0.05
+        ca, obs_p1, obs_p2, d_danger = -1, 5, 0.025, 0.1
         ct, delta, delta2 = 200, 0.2, 0.2
         # R_T 终点
         d_t_tran = self._Rm63_controller.distance(self.target_pose)  # 位置
@@ -212,15 +208,15 @@ class Rm63Env_s4_3(gym.Env):
         # reset physics
         with self._physics.reset_context():
             # put arm in a reasonable starting position
-            arm_pos_init = [
-                0.0 + m.pi * 0.1 * (np.random.rand() - 0.5),
-                m.pi * 0.2 + m.pi * 0.1 * (np.random.rand() - 0.5),
-                -m.pi * 0.4 + m.pi * 0.1 * (np.random.rand() - 0.5),
-                0.0 + m.pi * 0.1 * (np.random.rand() - 0.5),
-                -m.pi / 2 + m.pi * 0.1 * (np.random.rand() - 0.5),
-                0.0 + m.pi * 0.1 * (np.random.rand() - 0.5)
-            ]
-            # arm_pos_init = [0.0, m.pi * 0.2, -m.pi * 0.4, 0.0, -m.pi / 2, 0.0]
+            # arm_pos_init = [
+            #     0.0 + m.pi * 0.1 * (np.random.rand() - 0.5),
+            #     m.pi * 0.2 + m.pi * 0.1 * (np.random.rand() - 0.5),
+            #     -m.pi * 0.4 + m.pi * 0.1 * (np.random.rand() - 0.5),
+            #     0.0 + m.pi * 0.1 * (np.random.rand() - 0.5),
+            #     -m.pi / 2 + m.pi * 0.1 * (np.random.rand() - 0.5),
+            #     0.0 + m.pi * 0.1 * (np.random.rand() - 0.5)
+            # ]
+            arm_pos_init = [0.0, m.pi * 0.2, -m.pi * 0.4, 0.0, -m.pi / 2, 0.0]
             self._physics.bind(self._arm.joints).qpos[:] = arm_pos_init
 
             # self._physics.bind(self._arm.joints).qpos[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

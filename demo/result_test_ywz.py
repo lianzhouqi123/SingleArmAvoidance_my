@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 # 验证已训练好的模型
 
 # 测试参数
-env_id = "Rm63Env-s4-2"
-actor_path = "actor_result_4_2_4tran2_3_act2.pth"
+env_id = "Rm63Env-s4-3"
+actor_path = "actor_result_4_3_1.pth"
 n_episodes = 1000  # 测试循环数
 test_mode = "correct_ratio"  # 正确率模式，不显示图形，不进行延时
 test_mode = "show"  # 展示模式，显示图形，并对每步进行延时

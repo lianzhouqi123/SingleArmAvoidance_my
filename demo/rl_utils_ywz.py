@@ -161,6 +161,70 @@ def train2(env, agent, num_episodes, replay_buffer, minimal_size, batch_size, nu
     return return_list
 
 
+def train_gan(env, agent, num_episodes, replay_buffer, minimal_size, batch_size, num_iteration, save_file):
+    return_list = np.array([])
+    i_terminate = 0
+    i_episode_all = 0
+    i_contact = 0
+    step_i = 0
+    n_section = 10
+    for i in range(n_section):
+        with tqdm(total=int(num_episodes / n_section), desc='Iteration %d' % i) as pbar:
+            for i_episode in range(int(num_episodes / n_section)):  # 10000/10 step
+
+                goals = gan.sample_generator()
+                env.set_goals(goals)
+
+
+                episode_return = 0
+                state = env.reset()[0].cuda()
+                done = False
+                terminate = False
+                flag_cont_epi = False
+                iidx = 0
+                while not done:
+                    step_i += 1
+                    iidx += 1
+                    action = agent.select_action(state)  # 使用新策略
+                    next_state, reward, done, terminate, info = env.step(action)
+                    replay_buffer.add(state, action, reward, next_state.cuda(), done)
+                    state = next_state.cuda()
+                    episode_return += reward
+                    if replay_buffer.size() > minimal_size:
+                        for j in range(num_iteration):
+                            b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)
+                            transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(), 'next_states': b_ns.cuda(),
+                                               'rewards': b_r.cuda(), 'dones': b_d.cuda()}
+                            agent.update_parameters(transition_dict, iidx)
+                        flag_cont_epi = True
+                if terminate:
+                    i_terminate += 1
+                if flag_cont_epi:
+                    i_contact += 1
+                return_list = np.append(return_list, episode_return)
+
+                labels = gan.labels_goals(terminate)
+                gan.train(goals, labels)
+                replay_buffer_gan.add(goals)
+
+
+                if (i_episode + 1) % 1 == 0:
+                    pbar.set_postfix({'episode': '%d' % (num_episodes / n_section * i + i_episode + 1),
+                                      'return': '%.3f' % np.mean(return_list[-1:]),
+                                      'terminate': '%d' % i_terminate,
+                                      'contact': '%d' % i_contact})
+                pbar.update(1)
+                i_episode_all += 1
+            time = i
+            torch.save(agent.actor.state_dict(), f'{save_file}/actor_{time}.pth')
+            torch.save(agent.critic_1.state_dict(), f'{save_file}/critic_1_{time}.pth')
+            torch.save(agent.critic_2.state_dict(), f'{save_file}/critic_2_{time}.pth')
+            with open('{}/return_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(return_list)
+    return return_list
+
+
 def train2_con(env, agent, num_episodes, replay_buffer, minimal_size, batch_size, num_iteration, save_file):
     return_list = np.array([])
     i_terminate = 0
