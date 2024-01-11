@@ -1,18 +1,27 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
-def gen_loss(DGz):
-    return DGz ** 2
+def batch_feed_array(array, batch_size):
+    data_size = array.shape[0]
+    # assert data_size >= batch_size
 
-
-def discr_loss_g(Dg, yg):
-    return yg * (Dg - 1) ** 2 + (1 - yg) * (Dg + 1) ** 2
-
-
-def discr_loss_z(DGz):
-    return (DGz + 1) ** 2
+    if data_size <= batch_size:  # 有的少于要的，全取
+        while True:
+            yield array  # 生成器
+    else:
+        start = 0
+        while True:  # 有的多余要的，轮着取
+            if start + batch_size < data_size:  # 剩下的不用循环
+                yield array[start:start + batch_size, :]
+            else:  # 剩下的要循环，取完再从头
+                yield torch.cat(
+                    [array[start:data_size, :], array[0: start + batch_size - data_size, :]],
+                    dim=0
+                )
+            start = (start + batch_size) % data_size
 
 
 class Generator(nn.Module):
@@ -66,19 +75,15 @@ class GAN:
                  batch_size):
         self.noise_size = noise_size
         self.batch_size = batch_size
+        self.discr_outputs = discr_outputs
 
         # 定义网络
         self.gen = Generator(self.noise_size, gen_hiddens, gen_outputs)
         self.discr = Discriminator(gen_outputs, discr_hiddens, discr_outputs)
 
-        # 定义损失函数
-        self.loss_gen = gen_loss
-        self.loss_discr_g = discr_loss_g
-        self.loss_discr_z = discr_loss_z
-
         # 优化器
-        self.gen_optimizer = torch.optim.Adam(self.gen.parameters(), lr=gen_lr)
-        self.discr_optimizer = torch.optim.Adam(self.discr.parameters(), lr=discr_lr)
+        self.gen_optimizer = torch.optim.RMSprop(self.gen.parameters(), lr=gen_lr)
+        self.discr_optimizer = torch.optim.RMSprop(self.discr.parameters(), lr=discr_lr)
 
     def sample_random_noise(self, size):
         return np.random.randn(size, self.noise_size)
@@ -95,22 +100,35 @@ class GAN:
 
         return generator_noise, generator_sample
 
-    def train(self):
-        # TODO
-        pass
+    def train(self, goals_real, labels_real):
+        generated_goals, random_noise = self.sample_generator(self.batch_size)  # 生成器随机生成的值
+        generated_labels = torch.zeros((self.batch_size, self.discr_outputs))
 
-    def train_discriminator(self, goals, labels):
-        """
-        :param goals: goal that we know labels of
-        :param labels: labels of those goals
-        The batch size is given by the configs of the class!
-        discriminator_batch_noise_stddev > 0: check that std on each component is at least this. (if com: 2)
-        """
-        assert goals.shape[0] == labels.shape[0], "goals.shape[0] != goals.shape[0]"
+        train_X = torch.vstack([goals_real, generated_goals])  # 沿 axis = 0 堆叠，输入的goal采样+generator生成
+        train_Y = torch.vstack([labels_real, generated_labels])  # 输入的label采样+0
 
-        loss = self.loss_discr_g(goals, labels) + self.loss_discr_z(self.generator_output)
+        # 更新discriminator
+        D_train_X = self.discr(train_X)  # [Dg, D(Gz)]
+        # ( 2 * yg - 1 - Dg) ** 2 + D(Gz) ** 2  经推导和论文中一样 Eg [yg(Dg-1)**2 + (1-yg)*(Dg+1)**2] + Ez [D(Gz)+1)**2]
+        discriminator_loss = F.mse_loss(2 * train_Y - 1 - D_train_X, torch.zeros_like(D_train_X))
+
         self.discr_optimizer.zero_grad()  # 清空过往梯度
-        loss.backward()  # 反向传播，计算当前梯度
+        discriminator_loss.backward()  # 反向传播，计算当前梯度
         self.discr_optimizer.step()  # 根据梯度更新网络参数
 
-        return loss
+        # 更新generator
+        generator_output = self.discr(self.gen(random_noise))  # Gz
+        generator_loss = F.mse_loss(generator_output, torch.ones_like(generator_output))  # ( D(Gz) - 1) ** 2
+
+        self.gen_optimizer.zero_grad()  # 清空过往梯度
+        generator_loss.backward()  # 反向传播，计算当前梯度
+        self.gen_optimizer.step()  # 根据梯度更新网络参数
+
+        return discriminator_loss, generator_loss
+
+    def discriminator_predict(self, X):
+        output = torch.tensor([], dtype=torch.float32)
+        for i in range(0, X.shape[0], self.batch_size):
+            sample_size = min(self.batch_size, X.shape[0] - i)
+            torch.cat([output, self.discr(X[i:i + sample_size]).detach()], dim=0)
+        return output
