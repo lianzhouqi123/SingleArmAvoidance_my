@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import random
 
 
 def batch_feed_array(array, batch_size):
@@ -71,15 +72,15 @@ class Discriminator(nn.Module):
 
 
 class GAN:
-    def __init__(self, noise_size, gen_hiddens, gen_outputs, discr_hiddens, discr_outputs, gen_lr, discr_lr,
+    def __init__(self, noise_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr,
                  batch_size):
         self.noise_size = noise_size
         self.batch_size = batch_size
-        self.discr_outputs = discr_outputs
+        self.discr_n_outputs = discr_n_outputs
 
         # 定义网络
-        self.gen = Generator(self.noise_size, gen_hiddens, gen_outputs)
-        self.discr = Discriminator(gen_outputs, discr_hiddens, discr_outputs)
+        self.gen = Generator(self.noise_size, gen_n_hiddens, gen_n_outputs)
+        self.discr = Discriminator(gen_n_outputs, discr_n_hiddens, self.discr_n_outputs)
 
         # 优化器
         self.gen_optimizer = torch.optim.RMSprop(self.gen.parameters(), lr=gen_lr)
@@ -100,32 +101,49 @@ class GAN:
 
         return generator_noise, generator_sample
 
-    def train(self, goals_real, labels_real):
-        generated_goals, random_noise = self.sample_generator(self.batch_size)  # 生成器随机生成的值
-        generated_labels = torch.zeros((self.batch_size, self.discr_outputs))
+    def train(self, goals_input, labels_input, batch_size, outer_iters=1):
+        """
+        :param goals_input:
+        :param labels_input:
+        :param batch_size: 每次训练的batch_size
+        :param outer_iters: 总循环数
+        :return:
+        """
+        input_size = goals_input.shape[0]
+        for ii in range(outer_iters):
+            # 随机取样进行训练
+            sample_i = random.sample(range(input_size), batch_size)
+            goals_sample = goals_input[sample_i, :]
+            labels_sample = labels_input[sample_i, :]
 
-        train_X = torch.vstack([goals_real, generated_goals])  # 沿 axis = 0 堆叠，输入的goal采样+generator生成
-        train_Y = torch.vstack([labels_real, generated_labels])  # 输入的label采样+0
+            # 生成器生成数据，由优化函数，长度需与batch_size相等
+            generated_goals, random_noise = self.sample_generator(batch_size)  # 生成器随机生成的值
+            generated_labels = torch.zeros((batch_size, self.discr_n_outputs))
 
-        # 更新discriminator
-        D_train_X = self.discr(train_X)  # [Dg, D(Gz)]
-        # ( 2 * yg - 1 - Dg) ** 2 + D(Gz) ** 2  经推导和论文中一样 Eg [yg(Dg-1)**2 + (1-yg)*(Dg+1)**2] + Ez [D(Gz)+1)**2]
-        discriminator_loss = F.mse_loss(2 * train_Y - 1 - D_train_X, torch.zeros_like(D_train_X))
+            # 将真实数据与生成数据混在一起
+            train_X = torch.vstack([goals_sample, generated_goals])  # 沿 axis = 0 堆叠，输入的goal采样+generator生成
+            train_Y = torch.vstack([labels_sample, generated_labels])  # 输入的label采样+0
 
-        self.discr_optimizer.zero_grad()  # 清空过往梯度
-        discriminator_loss.backward()  # 反向传播，计算当前梯度
-        self.discr_optimizer.step()  # 根据梯度更新网络参数
+            # 更新discriminator
+            D_train_X = self.discr(train_X)  # [Dg, D(Gz)]
+            # ( 2 * yg - 1 - Dg) ** 2 + D(Gz) ** 2  经推导和论文中一样 Eg [yg(Dg-1)**2 + (1-yg)*(Dg+1)**2] + Ez [D(Gz)+1)**2]
+            discriminator_loss = F.mse_loss(2 * train_Y - 1 - D_train_X, torch.zeros_like(D_train_X))
 
-        # 更新generator
-        generator_output = self.discr(self.gen(random_noise))  # Gz
-        generator_loss = F.mse_loss(generator_output, torch.ones_like(generator_output))  # ( D(Gz) - 1) ** 2
+            self.discr_optimizer.zero_grad()  # 清空过往梯度
+            discriminator_loss.backward()  # 反向传播，计算当前梯度
+            self.discr_optimizer.step()  # 根据梯度更新网络参数
 
-        self.gen_optimizer.zero_grad()  # 清空过往梯度
-        generator_loss.backward()  # 反向传播，计算当前梯度
-        self.gen_optimizer.step()  # 根据梯度更新网络参数
+            # 更新generator
+            generator_output = self.discr(self.gen(random_noise))  # Gz
+            generator_loss = F.mse_loss(generator_output, torch.ones_like(generator_output))  # ( D(Gz) - 1) ** 2
+
+            self.gen_optimizer.zero_grad()  # 清空过往梯度
+            generator_loss.backward()  # 反向传播，计算当前梯度
+            self.gen_optimizer.step()  # 根据梯度更新网络参数
 
         return discriminator_loss, generator_loss
 
+    # 用discriminator预测输入
     def discriminator_predict(self, X):
         output = torch.tensor([], dtype=torch.float32)
         for i in range(0, X.shape[0], self.batch_size):
