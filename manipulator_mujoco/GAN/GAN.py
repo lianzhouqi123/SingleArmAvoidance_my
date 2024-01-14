@@ -99,7 +99,7 @@ class GAN:
             generator_noise.append(noise)  # 存噪声
             generator_sample.append(self.gen(noise))  # 生成goals并存
 
-        return generator_noise, generator_sample
+        return generator_sample, generator_noise
 
     def train(self, goals_input, labels_input, batch_size, outer_iters=1):
         """
