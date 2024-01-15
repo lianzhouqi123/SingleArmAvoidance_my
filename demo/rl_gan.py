@@ -118,8 +118,10 @@ class Goal_Label_Collection:
 class GoalGAN:
     """ 将GAN应用在生成目标上"""
 
-    def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_up, *args, **kwargs):
-        self.gan = GAN(gen_n_outputs=state_size, discr_n_outputs=evaluator_size, *args, **kwargs)
+    def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_up, gen_n_hiddens,
+                 gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr, batch_size):
+        self.gan = GAN(state_size,  gen_n_hiddens, gen_n_outputs, discr_n_hiddens,
+                       evaluator_size, gen_lr, discr_lr, batch_size)
         self.state_size = state_size
         self.evaluator_size = evaluator_size
         self.state_noise_level = state_noise_level

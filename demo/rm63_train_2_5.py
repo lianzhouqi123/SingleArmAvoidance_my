@@ -8,15 +8,20 @@ import numpy as np
 import csv
 import os
 
+# 环境参数
 my_render_mode = 'human'
 my_render_mode = "rgb_array"
 env = gym.make('Rm63Env-s2-2', render_mode=my_render_mode)
-n_features = env.observation_space.shape[0]
+state_size = env.observation_space.shape[0]
 n_actions = env.action_space.shape[0]  # 正负
 action_bound = env.action_space.high[0]  # 动作最大值
 np.random.seed(0)
 torch.manual_seed(0)
+# 目标设定
+goal_size = env.goal_space.shape[0]
+goal_low, goal_up = env.get_goal_space()
 
+# RL参数
 gamma = 0.98  # 更新学习率
 tau = 0.003  # 软更新参数
 actor_lr = 1e-4  # actor优化器学习率
@@ -26,6 +31,14 @@ policy_noise = 0.01
 noise_clip = 0.01
 exploration_noise = 0.008  # 噪声标准差
 policy_delay = 2
+
+# gan 参数
+evaluator_size = 1
+state_noise_level =
+gen_n_hiddens = 256  # 生成器隐含层
+discr_n_hiddens = 128  # 判别器隐含层
+gen_lr =
+discr_lr =
 
 num_episodes = 4000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
@@ -37,15 +50,15 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
 # 待训练的新模型
-agent = TD3.TD3Continuous(n_features, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,
+agent = TD3.TD3Continuous(state_size, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,
                           exploration_noise, gamma, policy_delay, tau, actor_lr, critic_lr, device)
 actor_path_2 = "1_2_1/actor_3.pth"
 critic_1_path_2 = "1_2_1/critic_1_3.pth"
 critic_2_path_2 = "1_2_1/critic_2_3.pth"
 agent.load_net_para(actor_path=actor_path_2, critic_1_path=critic_1_path_2, critic_2_path=critic_2_path_2)
 
-gan = rl.GoalGAN(state_size, evaluator_size, state_noise_level, goal_low, goal_up, noise_size,
-                 gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr, batch_size)
+gan = rl.GoalGAN(state_size, evaluator_size, state_noise_level, goal_low, goal_up, gen_n_hiddens,
+                 goal_size, discr_n_hiddens, gen_lr, discr_lr, batch_size)
 
 goals_buffer = rl.GoalCollection(dim_goal, distance_threshold)
 
