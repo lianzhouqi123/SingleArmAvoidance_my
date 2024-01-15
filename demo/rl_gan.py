@@ -60,8 +60,10 @@ class GoalCollection:
 
 
 class Goal_Label_Collection:
-    def __init__(self):
+    def __init__(self, dim_goal, distance_threshold=None):
         self.buffer = []
+        self.dim_goal = dim_goal
+        self.distance_threshold = distance_threshold
 
     def reset(self):
         self.buffer = []
@@ -74,7 +76,34 @@ class Goal_Label_Collection:
             batch_size = self.size
         transitions = random.sample(self.buffer, batch_size)  # 取样
         goals, labels = zip(*transitions)  # 把tuple解压成list
+        # 将tuple转成tensor
+        goals = torch.stack(goals, dim=0).reshape([-1, self.dim_goal])
+        labels = torch.tensor(labels, dtype=torch.float32).reshape([-1, 1])
+        goals_save = torch.tensor([]).reshape([-1, self.dim_goal])
+        labels_save = torch.tensor([]).reshape([-1, 1])
         # 将相近的goals的labels取平均
+        if self.distance_threshold is not None and self.distance_threshold > 0:
+            n_goals = goals.shape[0]  # goals的数目
+            flag_mat = torch.ones([n_goals, 1])
+            goals_temp = goals
+            labels_temp = labels
+            while goals_temp.shape[0] > 0:
+                # 取一个目标
+                goal = goals_temp[0, :].reshape([1, self.dim_goal])
+                # 计算距离，并取小于距离限制的数
+                dis = torch.norm(goals_temp - goal, dim=1)  # [n, ]
+                flag = torch.lt(dis, self.distance_threshold)  # [n, ]
+                # 计算label
+                n_state = torch.sum(flag)
+                label = torch.tensor(torch.sum(labels_temp * flag)/n_state).reshape([1, 1])
+                # 存数据
+                goals_save = torch.cat([goals_save, goal], dim=0)
+                labels_save = torch.cat([labels_save, label], dim=0)
+                # 删数据
+
+
+
+
 
         return goals, labels
 
