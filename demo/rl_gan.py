@@ -60,33 +60,33 @@ class GoalCollection:
 
 
 class Goal_Label_Collection:
-    def __init__(self, dim_goal, distance_threshold=None):
+    def __init__(self, dim_goal, distance_threshold=None, R_min=0.22, R_max=0.8):
         self.buffer = []
         self.dim_goal = dim_goal
         self.distance_threshold = distance_threshold
+        self.R_min = R_min
+        self.R_max = R_max
 
     def reset(self):
         self.buffer = []
 
-    def add(self, goal, label):
-        self.buffer.append((goal, label))
+    def add(self, goal, label_good):
+        self.buffer.append((goal, label_good))
 
     def sample(self, batch_size):
         if batch_size > self.size:
             batch_size = self.size
         transitions = random.sample(self.buffer, batch_size)  # 取样
-        goals, labels = zip(*transitions)  # 把tuple解压成list
+        goals, labels_good = zip(*transitions)  # 把tuple解压成list
         # 将tuple转成tensor
         goals = torch.stack(goals, dim=0).reshape([-1, self.dim_goal])
-        labels = torch.tensor(labels, dtype=torch.float32).reshape([-1, 1])
+        labels_good = torch.tensor(labels_good, dtype=torch.float32).reshape([-1, 1])
         goals_save = torch.tensor([]).reshape([-1, self.dim_goal])
         labels_save = torch.tensor([]).reshape([-1, 1])
         # 将相近的goals的labels取平均
         if self.distance_threshold is not None and self.distance_threshold > 0:
-            n_goals = goals.shape[0]  # goals的数目
-            flag_mat = torch.ones([n_goals, 1])
             goals_temp = goals
-            labels_temp = labels
+            labels_temp = labels_good
             while goals_temp.shape[0] > 0:
                 # 取一个目标
                 goal = goals_temp[0, :].reshape([1, self.dim_goal])
@@ -95,17 +95,20 @@ class Goal_Label_Collection:
                 flag = torch.lt(dis, self.distance_threshold)  # [n, ]
                 # 计算label
                 n_state = torch.sum(flag)
-                label = torch.tensor(torch.sum(labels_temp * flag)/n_state).reshape([1, 1])
-                # 存数据
-                goals_save = torch.cat([goals_save, goal], dim=0)
-                labels_save = torch.cat([labels_save, label], dim=0)
+                if n_state >= 5:  # 数量够多才认为数据有效
+                    label_good = torch.tensor(torch.sum(labels_temp * flag)/n_state).reshape([1, 1])
+                    if self.R_min <= label_good <= self.R_max:
+                        label = 1
+                    else:
+                        label = 0
+                    # 存数据
+                    goals_save = torch.cat([goals_save, goal], dim=0)
+                    labels_save = torch.cat([labels_save, label], dim=0)
                 # 删数据
+                goals_temp = goals_temp[~flag]
+                labels_temp = labels_temp[~flag]
 
-
-
-
-
-        return goals, labels
+        return goals_save, labels_save
 
     @property
     def size(self):
@@ -173,10 +176,11 @@ def generate_initial_goals(env, agent, horizon=500, size=1e4):
     return goals
 
 
-def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size, batch_size,
-              num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
+def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
+              batch_size_rl, batch_size_gan, num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
     pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
     gan.pretrain(pretrain_goals, 500)  # 预训练
+    goals_buffer.add(pretrain_goals)
     i_terminate = 0
     i_episode_all = 0
     i_contact = 0
@@ -192,42 +196,49 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
 
                 # 跑环境并用RL训练agent
                 for jj in range(int(num_rl)):
-                    episode_return = 0
-                    state = env.reset()[0].cuda()
-                    done = False
-                    flag_cont_epi = False
-                    iidx = 0
-                    while not done:
-                        iidx += 1
-                        action = agent.select_action(state)  # 使用策略
-                        next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
-                        if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
-                            flag_cont_epi = True
-                        replay_buffer.add(state, action, reward, next_state.cuda(), done)  # 加入RL的buffer
-                        if ~flag_cont_epi:  # 若没撞，则当前状态标为1
-                            label = 1
-                        else:
-                            label = 0
-                        goal_label_buffer.add(state, label)  # 存goal, label
-                        episode_return += reward
-                        state = next_state.cuda()
-                        if replay_buffer.size() > minimal_size:
-                            for j in range(num_iteration):
-                                b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size)  # 采样
-                                transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
-                                                   'next_states': b_ns.cuda(),
-                                                   'rewards': b_r.cuda(), 'dones': b_d.cuda()}
-                                agent.update_parameters(transition_dict, iidx)  # 训练agent
+                    goal = env.setgoal
+                    for pp in range(5):
+                        episode_return = 0
+                        state = env.reset()[0].cuda()
+                        done = False
+                        flag_cont_epi = False
+                        iidx = 0
+                        while not done:
+                            iidx += 1
+                            action = agent.select_action(state)  # 使用策略
+                            next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
+                            if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
+                                flag_cont_epi = True
+                            replay_buffer.add(state, action, reward, next_state.cuda(), done)  # 加入RL的buffer
+                            episode_return += reward
+                            state = next_state.cuda()
+                            # 训练RL
+                            if replay_buffer.size() > minimal_size:
+                                for j in range(num_iteration):
+                                    b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size_rl)  # 采样
+                                    transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
+                                                       'next_states': b_ns.cuda(),
+                                                       'rewards': b_r.cuda(), 'dones': b_d.cuda()}
+                                    agent.update_parameters(transition_dict, iidx)  # 训练agent
 
-                    if terminate:
-                        i_terminate += 1
-                    if flag_cont_epi:
-                        i_contact += 1
-                    return_list = np.append(return_list, episode_return)
+                        if terminate:
+                            i_terminate += 1
+                        if flag_cont_epi:
+                            i_contact += 1
+                        # 记录目标是好目标还是坏目标
+                        if ~flag_cont_epi and terminate:  # 若没撞且到达，则当前状态标为1
+                            label_good = 1
+                        else:
+                            label_good = 0
+                        goal_label_buffer.add(goal, label_good)  # 存goal, label
+                        return_list = np.append(return_list, episode_return)
 
                 # 训练gan
                 for kk in range(int(num_gan)):
-                    goals_labels = goal_label_buffer.sample(goal_label_buffer.size)  # 全取
+                    goals_save, labels_save = goal_label_buffer.sample(goal_label_buffer.size)  # 全取
+                    gan.train(goals_save, labels_save, batch_size_gan)
+
+                goals_buffer.add()
 
                 if (i_episode + 1) % 1 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / n_section * i + i_episode + 1),
