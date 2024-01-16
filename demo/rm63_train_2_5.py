@@ -11,7 +11,7 @@ import os
 # 环境参数
 my_render_mode = 'human'
 my_render_mode = "rgb_array"
-env = gym.make('Rm63Env-s2-2', render_mode=my_render_mode)
+env = gym.make('Rm63Env-s2-5', render_mode=my_render_mode)
 state_size = env.observation_space.shape[0]
 n_actions = env.action_space.shape[0]  # 正负
 action_bound = env.action_space.high[0]  # 动作最大值
@@ -19,7 +19,7 @@ np.random.seed(0)
 torch.manual_seed(0)
 # 目标设定
 goal_size = env.goal_space.shape[0]
-goal_low, goal_up = env.get_goal_space()
+goal_low, goal_high = env.goal_space.low, env.goal_space.high
 
 # RL参数
 gamma = 0.98  # 更新学习率
@@ -34,16 +34,25 @@ policy_delay = 2
 
 # gan 参数
 evaluator_size = 1
-state_noise_level =
+state_noise_level = 0.5
 gen_n_hiddens = 256  # 生成器隐含层
 discr_n_hiddens = 128  # 判别器隐含层
-gen_lr =
-discr_lr =
+gen_lr = 1e-3
+discr_lr = 1e-3
+distance_threshold = 1e-3
+R_min = 0.22
+R_max = 0.8
 
 num_episodes = 4000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
-batch_size = 256  # 取样样本数
+
+batch_size_rl = 128
+batch_size_gan = 64
+num_new_goals = 200
+num_old_goals = 100
+num_rl = 5
+num_gan = 300
 num_iteration = 1  # 一回合训练次数
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
@@ -57,14 +66,14 @@ critic_1_path_2 = "1_2_1/critic_1_3.pth"
 critic_2_path_2 = "1_2_1/critic_2_3.pth"
 agent.load_net_para(actor_path=actor_path_2, critic_1_path=critic_1_path_2, critic_2_path=critic_2_path_2)
 
-gan = rl.GoalGAN(state_size, evaluator_size, state_noise_level, goal_low, goal_up, gen_n_hiddens,
-                 goal_size, discr_n_hiddens, gen_lr, discr_lr, batch_size)
+gan = rl.GoalGAN(state_size, evaluator_size, state_noise_level, goal_low, goal_high, gen_n_hiddens,
+                 goal_size, discr_n_hiddens, gen_lr, discr_lr)
 
-goals_buffer = rl.GoalCollection(dim_goal, distance_threshold)
+goals_buffer = rl.GoalCollection(goal_size, distance_threshold)
 
 replay_buffer = rl.ReplayBuffer(buffer_size)
 
-goal_label_buffer = rl.Goal_Label_Collection(dim_goal, distance_threshold, R_min, R_max)
+goal_label_buffer = rl.Goal_Label_Collection(goal_size, distance_threshold, R_min, R_max)
 
 save_file = "2_2_2"
 if not os.path.exists(save_file):

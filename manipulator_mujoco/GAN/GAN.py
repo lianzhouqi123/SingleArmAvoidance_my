@@ -72,10 +72,9 @@ class Discriminator(nn.Module):
 
 
 class GAN:
-    def __init__(self, noise_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr,
-                 batch_size):
+    def __init__(self, noise_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr):
         self.noise_size = noise_size
-        self.batch_size = batch_size
+        # self.batch_size = batch_size
         self.discr_n_outputs = discr_n_outputs
 
         # 定义网络
@@ -87,17 +86,20 @@ class GAN:
         self.discr_optimizer = torch.optim.RMSprop(self.discr.parameters(), lr=discr_lr)
 
     def sample_random_noise(self, size):
-        return np.random.randn(size, self.noise_size)
+        return torch.randn(size, self.noise_size)
 
     def sample_generator(self, size):
-        generator_sample = []
-        generator_noise = []
-        batch_size = self.batch_size
-        for i in range(0, size, batch_size):
-            sample_size = min(batch_size, size - i)  # 防止不整除
-            noise = self.sample_random_noise(sample_size)  # 生成噪声（gen的输入）
-            generator_noise.append(noise)  # 存噪声
-            generator_sample.append(self.gen(noise))  # 生成goals并存
+        # generator_sample = torch.tensor([])
+        # generator_noise = torch.tensor([])
+        # batch_size = self.batch_size
+        # for i in range(0, size, batch_size):
+        #     sample_size = min(batch_size, size - i)  # 防止不整除
+        #     noise = self.sample_random_noise(sample_size)  # 生成噪声（gen的输入）
+        #     generator_noise.append(noise)  # 存噪声
+        #     generator_sample.append(self.gen(noise))  # 生成goals并存
+        noise = self.sample_random_noise(size)  # 生成噪声（gen的输入）
+        generator_noise = torch.clone(noise)  # 存噪声
+        generator_sample = torch.clone(self.gen(noise))  # 生成goals并存
 
         return generator_sample, generator_noise
 
@@ -146,7 +148,8 @@ class GAN:
     # 用discriminator预测输入
     def discriminator_predict(self, X):
         output = torch.tensor([], dtype=torch.float32)
-        for i in range(0, X.shape[0], self.batch_size):
-            sample_size = min(self.batch_size, X.shape[0] - i)
-            torch.cat([output, self.discr(X[i:i + sample_size]).detach()], dim=0)
+        # for i in range(0, X.shape[0], self.batch_size):
+        #     sample_size = min(self.batch_size, X.shape[0] - i)
+        #     torch.cat([output, self.discr(X[i:i + sample_size]).detach()], dim=0)
+        output = torch.cat([output, self.discr(X).detach()], dim=0)
         return output

@@ -71,6 +71,9 @@ class Goal_Label_Collection:
         self.buffer = []
 
     def add(self, goal, label_good):
+        if not torch.is_tensor(goal):
+            goal = torch.tensor(goal, dtype=torch.float32)
+        goal = goal.reshape([1, -1])
         self.buffer.append((goal, label_good))
 
     def sample(self, batch_size):
@@ -118,16 +121,16 @@ class Goal_Label_Collection:
 class GoalGAN:
     """ 将GAN应用在生成目标上"""
 
-    def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_up, gen_n_hiddens,
-                 gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr, batch_size):
+    def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_high, gen_n_hiddens,
+                 gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr):
         self.gan = GAN(state_size,  gen_n_hiddens, gen_n_outputs, discr_n_hiddens,
-                       evaluator_size, gen_lr, discr_lr, batch_size)
+                       evaluator_size, gen_lr, discr_lr)
         self.state_size = state_size
         self.evaluator_size = evaluator_size
         self.state_noise_level = state_noise_level
-        self.goal_low = goal_low.reshape([1, 4])
-        self.goal_up = goal_up.reshape([1, 4])
-        self.goal_center = (self.goal_up + self.goal_low)/2
+        self.goal_low = torch.tensor(goal_low, dtype=torch.float32).reshape([1, -1])
+        self.goal_high = torch.tensor(goal_high, dtype=torch.float32).reshape([1, -1])
+        self.goal_center = (self.goal_high + self.goal_low)/2
 
     # 预训练
     def pretrain(self, states, outer_iters):
@@ -136,13 +139,13 @@ class GoalGAN:
 
     def sample_states(self, size):
         normalized_goals, noise = self.gan.sample_generator(size)
-        goals = self.goal_center + normalized_goals * (self.goal_up - self.goal_center)
+        goals = self.goal_center + normalized_goals * (self.goal_high - self.goal_center)
         return goals, noise
 
     def add_noise_to_states(self, goals):
         noise = torch.randn_like(goals)
         goals += noise
-        return torch.clamp(goals, min=self.goal_low, max=self.goal_up)
+        return torch.clamp(goals, min=self.goal_low, max=self.goal_high)
 
     def sample_states_with_noise(self, size):
         goals, noise = self.sample_states(size)
@@ -157,22 +160,30 @@ def generate_initial_goals(env, agent, horizon=500, size=1e4):
 
     state = env.reset()[0].cuda()
     done = False
+    flag_cont_epi = False
     steps = 0
     while goals.shape[0] < size:
         steps += 1
         if done or steps >= horizon:
             steps = 0
             done = False
+            flag_cont_epi = False
             # 随机新生成一个目标，未完成
-            env.target_sample()
-
+            env.new_target()
             state = env.reset()[0].cuda()
         else:
             action = agent.select_action(state)  # 使用策略
             next_state, _, done, terminate, info = env.step(action)
+            if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
+                flag_cont_epi = True
             state = next_state.cuda()
-            if info["good_state"]:
-                goal_from_state = env.state2goal(state)  # 将当前状态变为目标
+            # 记录目标是好目标还是坏目标
+            if ~flag_cont_epi:  # 若没撞，则当前状态标为1
+                label_good = 1
+            else:
+                label_good = 0
+            if label_good:
+                goal_from_state = env.state2goal().reshape([1, -1])  # 将当前状态变为目标
                 goals = np.append(goals, goal_from_state, axis=0)  # 存数
 
     return goals
@@ -180,7 +191,10 @@ def generate_initial_goals(env, agent, horizon=500, size=1e4):
 
 def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
               batch_size_rl, batch_size_gan, num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
+    return_list = []
+    env.reset()
     pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
+    pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
     gan.pretrain(pretrain_goals, 500)  # 预训练
     goals_buffer.add(pretrain_goals)
     i_terminate = 0
@@ -194,13 +208,15 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                 old_goals = goals_buffer.sample(num_old_goals)  # 从全部目标集取老目标
                 goal_label_buffer.reset()  # 重置
 
-                env.update_goals(raw_goals, old_goals, mode="uniform")  # 更新环境的可选目标
+                env.update_goals(torch.cat([raw_goals, old_goals], dim=0))  # 更新环境的可选目标
 
                 # 跑环境并用RL训练agent
                 for jj in range(int(num_rl)):
-                    goal = env.setgoal
+                    goal = env.set_goal()
+                    goal = torch.tensor(goal, dtype=torch.float32)
                     for pp in range(5):
                         episode_return = 0
+                        env.change_goal = False
                         state = env.reset()[0].cuda()
                         done = False
                         flag_cont_epi = False
@@ -236,11 +252,12 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         return_list = np.append(return_list, episode_return)
 
                 # 训练gan
+                goals_with_label, labels_of_goals = goal_label_buffer.sample(goal_label_buffer.size)  # 全取
                 for kk in range(int(num_gan)):
-                    goals_save, labels_save = goal_label_buffer.sample(goal_label_buffer.size)  # 全取
-                    gan.train(goals_save, labels_save, batch_size_gan)
+                    gan.train(goals_with_label, labels_of_goals, batch_size_gan)
 
-                goals_buffer.add()
+                flag_goals = (labels_of_goals == 1).reshape([-1])
+                goals_buffer.add(goals_with_label[flag_goals])
 
                 if (i_episode + 1) % 1 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / n_section * i + i_episode + 1),
