@@ -101,9 +101,9 @@ class Goal_Label_Collection:
                 if n_state >= 5:  # 数量够多才认为数据有效
                     label_good = torch.tensor(torch.sum(labels_temp * flag)/n_state).reshape([1, 1])
                     if self.R_min <= label_good <= self.R_max:
-                        label = 1
+                        label = torch.tensor([[1]], dtype=torch.float32)
                     else:
-                        label = 0
+                        label = torch.tensor([[0]], dtype=torch.float32)
                     # 存数据
                     goals_save = torch.cat([goals_save, goal], dim=0)
                     labels_save = torch.cat([labels_save, label], dim=0)
