@@ -43,7 +43,7 @@ distance_threshold = 1e-3
 R_min = 0.22
 R_max = 0.8
 
-num_episodes = 4000  # 总训练循环数
+num_episodes = 3000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
 
@@ -67,7 +67,7 @@ critic_2_path_2 = "1_2_1/critic_2_3.pth"
 agent.load_net_para(actor_path=actor_path_2, critic_1_path=critic_1_path_2, critic_2_path=critic_2_path_2)
 
 gan = rl.GoalGAN(state_size, evaluator_size, state_noise_level, goal_low, goal_high, gen_n_hiddens,
-                 goal_size, discr_n_hiddens, gen_lr, discr_lr)
+                 goal_size, discr_n_hiddens, gen_lr, discr_lr, device)
 
 goals_buffer = rl.GoalCollection(goal_size, distance_threshold)
 
@@ -75,7 +75,7 @@ replay_buffer = rl.ReplayBuffer(buffer_size)
 
 goal_label_buffer = rl.Goal_Label_Collection(goal_size, distance_threshold, R_min, R_max)
 
-save_file = "2_2_2"
+save_file = "2_2_5"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
@@ -83,11 +83,11 @@ return_list = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_la
                            num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
                            num_new_goals, num_old_goals, num_rl, num_gan, save_file)
 
-torch.save(agent.actor.state_dict(), 'actor_result_2_2_2.pth')
-torch.save(agent.critic_1.state_dict(), 'critic_1_result_2_2_2.pth')
-torch.save(agent.critic_2.state_dict(), 'critic_2_result_2_2_2.pth')
+torch.save(agent.actor.state_dict(), 'actor_result_2_2_5.pth')
+torch.save(agent.critic_1.state_dict(), 'critic_1_result_2_2_5.pth')
+torch.save(agent.critic_2.state_dict(), 'critic_2_result_2_2_5.pth')
 
-with open('return_list_2_2_2.csv', 'w', newline='') as f:
+with open('return_list_2_2_5.csv', 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(return_list)
 
@@ -95,12 +95,12 @@ episodes_list = list(range(len(return_list)))
 plt.plot(episodes_list, return_list)
 plt.xlabel('Episodes')
 plt.ylabel('Returns')
-plt.title('TD3 tran 2-2 on {}'.format(env))
+plt.title('gan TD3 tran 2-5')
 plt.show()
 
 mv_return = rl.moving_average(return_list, 9)
 plt.plot(episodes_list, mv_return)
 plt.xlabel('Episodes')
 plt.ylabel('Returns')
-plt.title('TD3 tran 2-2 on {}'.format(env))
+plt.title('gan TD3 tran 2-5')
 plt.show()

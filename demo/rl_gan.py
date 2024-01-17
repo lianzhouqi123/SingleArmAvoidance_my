@@ -79,37 +79,60 @@ class Goal_Label_Collection:
     def sample(self, batch_size):
         if batch_size > self.size:
             batch_size = self.size
-        transitions = random.sample(self.buffer, batch_size)  # 取样
+
+        # 采样
+        tran_idx = random.sample(range(self.size), batch_size)  # 取数组
+        transitions = [self.buffer[i] for i in tran_idx]  # 取样
         goals, labels_good = zip(*transitions)  # 把tuple解压成list
+        self.buffer = [trans for idx, trans in enumerate(self.buffer) if idx not in tran_idx]  # 删掉取出的数
+
         # 将tuple转成tensor
         goals = torch.stack(goals, dim=0).reshape([-1, self.dim_goal])
         labels_good = torch.tensor(labels_good, dtype=torch.float32).reshape([-1, 1])
+
+        # 初始化保存数组
         goals_save = torch.tensor([]).reshape([-1, self.dim_goal])
         labels_save = torch.tensor([]).reshape([-1, 1])
+
         # 将相近的goals的labels取平均
         if self.distance_threshold is not None and self.distance_threshold > 0:
             goals_temp = goals
             labels_temp = labels_good
             while goals_temp.shape[0] > 0:
-                # 取一个目标
+                # 取一个目标(取第一个)
                 goal = goals_temp[0, :].reshape([1, self.dim_goal])
+                label_of_goal = labels_temp[0, :].reshape([1, -1])
                 # 计算距离，并取小于距离限制的数
                 dis = torch.norm(goals_temp - goal, dim=1)  # [n, ]
                 flag = torch.lt(dis, self.distance_threshold)  # [n, ]
+
                 # 计算label
-                n_state = torch.sum(flag)
+                n_state = torch.sum(flag)  # 总数
                 if n_state >= 5:  # 数量够多才认为数据有效
-                    label_good = torch.tensor(torch.sum(labels_temp * flag)/n_state).reshape([1, 1])
+                    label_good = (torch.sum(labels_temp * flag)/n_state).reshape([1, 1])  # 计算成功率
+                    # 不大不小才是真的好
                     if self.R_min <= label_good <= self.R_max:
                         label = torch.tensor([[1]], dtype=torch.float32)
                     else:
                         label = torch.tensor([[0]], dtype=torch.float32)
+
                     # 存数据
                     goals_save = torch.cat([goals_save, goal], dim=0)
                     labels_save = torch.cat([labels_save, label], dim=0)
-                # 删数据
-                goals_temp = goals_temp[~flag]
-                labels_temp = labels_temp[~flag]
+
+                    # 删数据
+                    goals_temp = goals_temp[~flag]
+                    labels_temp = labels_temp[~flag]
+
+                else:  # 不符合要求，放回buffer
+                    self.add(goal, label_of_goal)
+
+                    # 删数据
+                    goals_temp = goals_temp[1:]
+                    labels_temp = labels_temp[1:]
+
+        else:
+            raise ValueError("Goal_Label_Collection，取样时，错误distance_threshold")
 
         return goals_save, labels_save
 
@@ -122,9 +145,10 @@ class GoalGAN:
     """ 将GAN应用在生成目标上"""
 
     def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_high, gen_n_hiddens,
-                 gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr):
+                 gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr, device):
+        self.device = device
         self.gan = GAN(state_size,  gen_n_hiddens, gen_n_outputs, discr_n_hiddens,
-                       evaluator_size, gen_lr, discr_lr)
+                       evaluator_size, gen_lr, discr_lr, device)
         self.state_size = state_size
         self.evaluator_size = evaluator_size
         self.state_noise_level = state_noise_level
@@ -139,7 +163,7 @@ class GoalGAN:
 
     def sample_states(self, size):
         normalized_goals, noise = self.gan.sample_generator(size)
-        goals = self.goal_center + normalized_goals * (self.goal_high - self.goal_center)
+        goals = self.goal_center + normalized_goals.cpu() * (self.goal_high - self.goal_center)
         return goals, noise
 
     def add_noise_to_states(self, goals):
@@ -151,6 +175,9 @@ class GoalGAN:
         goals, noise = self.sample_states(size)
         goals = self.add_noise_to_states(goals)
         return goals, noise
+
+    def train(self, goals_input, labels_input, batch_size, outer_iters=1):
+        return self.gan.train(goals_input, labels_input, batch_size, outer_iters)
 
 
 def generate_initial_goals(env, agent, horizon=500, size=1e4):
@@ -184,9 +211,16 @@ def generate_initial_goals(env, agent, horizon=500, size=1e4):
                 label_good = 0
             if label_good:
                 goal_from_state = env.state2goal().reshape([1, -1])  # 将当前状态变为目标
-                goals = np.append(goals, goal_from_state, axis=0)  # 存数
+                if np.all((env.goal_low <= goal_from_state) & (goal_from_state <= env.goal_high)):
+                    goals = np.append(goals, goal_from_state, axis=0)  # 存数
 
     return goals
+
+
+def add_goal_from_state(env, label_state, collection):
+    goal = env.state2goal()
+    if np.all((env.goal_low <= goal) & (goal <= env.goal_high)):
+        collection.add(goal, label_state)
 
 
 def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
@@ -195,8 +229,10 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
     env.reset()
     pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
     pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
-    gan.pretrain(pretrain_goals, 500)  # 预训练
     goals_buffer.add(pretrain_goals)
+    pretrain_goals = pretrain_goals.cuda()
+    gan.pretrain(pretrain_goals, 500)  # 预训练
+
     i_terminate = 0
     i_episode_all = 0
     i_contact = 0
@@ -214,42 +250,42 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                 for jj in range(int(num_rl)):
                     goal = env.set_goal()
                     goal = torch.tensor(goal, dtype=torch.float32)
-                    for pp in range(5):
-                        episode_return = 0
-                        env.change_goal = False
-                        state = env.reset()[0].cuda()
-                        done = False
-                        flag_cont_epi = False
-                        iidx = 0
-                        while not done:
-                            iidx += 1
-                            action = agent.select_action(state)  # 使用策略
-                            next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
-                            if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
-                                flag_cont_epi = True
-                            replay_buffer.add(state, action, reward, next_state.cuda(), done)  # 加入RL的buffer
-                            episode_return += reward
-                            state = next_state.cuda()
-                            # 训练RL
-                            if replay_buffer.size() > minimal_size:
-                                for j in range(num_iteration):
-                                    b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size_rl)  # 采样
-                                    transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
-                                                       'next_states': b_ns.cuda(),
-                                                       'rewards': b_r.cuda(), 'dones': b_d.cuda()}
-                                    agent.update_parameters(transition_dict, iidx)  # 训练agent
+                    episode_return = 0
+                    env.change_goal = False
+                    state = env.reset()[0].cuda()
+                    done = False
+                    flag_cont_epi = False
+                    iidx = 0
+                    while not done:
+                        iidx += 1
+                        action = agent.select_action(state)  # 使用策略
+                        next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
+                        if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
+                            flag_cont_epi = True
+                        add_goal_from_state(env, flag_cont_epi, goal_label_buffer)  # 只能在当前状态下调用!!!
+                        replay_buffer.add(state, action, reward, next_state.cuda(), done)  # 加入RL的buffer
+                        episode_return += reward
+                        state = next_state.cuda()
+                        # 训练RL
+                        if replay_buffer.size() > minimal_size:
+                            for j in range(num_iteration):
+                                b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size_rl)  # 采样
+                                transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
+                                                   'next_states': b_ns.cuda(),
+                                                   'rewards': b_r.cuda(), 'dones': b_d.cuda()}
+                                agent.update_parameters(transition_dict, iidx)  # 训练agent
 
-                        if terminate:
-                            i_terminate += 1
-                        if flag_cont_epi:
-                            i_contact += 1
-                        # 记录目标是好目标还是坏目标
-                        if ~flag_cont_epi and terminate:  # 若没撞且到达，则当前状态标为1
-                            label_good = 1
-                        else:
-                            label_good = 0
-                        goal_label_buffer.add(goal, label_good)  # 存goal, label
-                        return_list = np.append(return_list, episode_return)
+                    if terminate:
+                        i_terminate += 1
+                    if flag_cont_epi:
+                        i_contact += 1
+                    # 记录目标是好目标还是坏目标
+                    if ~flag_cont_epi and terminate:  # 若没撞且到达，则当前状态标为1
+                        label_good = 1
+                    else:
+                        label_good = 0
+                    goal_label_buffer.add(goal, label_good)  # 存goal, label
+                    return_list = np.append(return_list, episode_return)
 
                 # 训练gan
                 goals_with_label, labels_of_goals = goal_label_buffer.sample(goal_label_buffer.size)  # 全取

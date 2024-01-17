@@ -125,7 +125,7 @@ class Rm63Env_s2_5(gym.Env):
         self._step_start = None
 
         self.step_count = 0  # 步数
-        self.step_max = 600  # 最大循环步数
+        self.step_max = 300  # 最大循环步数
         self.flag_cont = False
         self.dis_t_old = 1  # 上次和目标最小距离
 

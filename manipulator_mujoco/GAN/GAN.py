@@ -72,21 +72,23 @@ class Discriminator(nn.Module):
 
 
 class GAN:
-    def __init__(self, noise_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr):
+    def __init__(self, noise_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens, discr_n_outputs, gen_lr, discr_lr,
+                 device):
         self.noise_size = noise_size
         # self.batch_size = batch_size
         self.discr_n_outputs = discr_n_outputs
+        self.device = device
 
         # 定义网络
-        self.gen = Generator(self.noise_size, gen_n_hiddens, gen_n_outputs)
-        self.discr = Discriminator(gen_n_outputs, discr_n_hiddens, self.discr_n_outputs)
+        self.gen = Generator(self.noise_size, gen_n_hiddens, gen_n_outputs).to(self.device)
+        self.discr = Discriminator(gen_n_outputs, discr_n_hiddens, self.discr_n_outputs).to(self.device)
 
         # 优化器
         self.gen_optimizer = torch.optim.RMSprop(self.gen.parameters(), lr=gen_lr)
         self.discr_optimizer = torch.optim.RMSprop(self.discr.parameters(), lr=discr_lr)
 
     def sample_random_noise(self, size):
-        return torch.randn(size, self.noise_size)
+        return torch.randn(size, self.noise_size).to(self.device)
 
     def sample_generator(self, size):
         # generator_sample = torch.tensor([])
@@ -112,18 +114,20 @@ class GAN:
         :return:
         """
         input_size = goals_input.shape[0]
+        if batch_size > input_size:
+            batch_size = input_size
         for ii in range(outer_iters):
             # 随机取样进行训练
             sample_i = random.sample(range(input_size), batch_size)
-            goals_sample = goals_input[sample_i, :]
-            labels_sample = labels_input[sample_i, :]
+            goals_sample = goals_input[sample_i, :].to(self.device)
+            labels_sample = labels_input[sample_i, :].to(self.device)
 
             # 生成器生成数据，由优化函数，长度需与batch_size相等
             generated_goals, random_noise = self.sample_generator(batch_size)  # 生成器随机生成的值
-            generated_labels = torch.zeros((batch_size, self.discr_n_outputs))
+            generated_labels = torch.zeros((batch_size, self.discr_n_outputs)).to(self.device)
 
             # 将真实数据与生成数据混在一起
-            train_X = torch.vstack([goals_sample, generated_goals])  # 沿 axis = 0 堆叠，输入的goal采样+generator生成
+            train_X = torch.vstack([goals_sample, generated_goals.to(self.device)])  # 沿 axis = 0 堆叠，输入的goal采样+generator生成
             train_Y = torch.vstack([labels_sample, generated_labels])  # 输入的label采样+0
 
             # 更新discriminator
