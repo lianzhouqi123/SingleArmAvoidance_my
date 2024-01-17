@@ -58,7 +58,8 @@ num_iteration = 1  # 一回合训练次数
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-# 待训练的新模型
+# 待训练的新模型+
+
 agent = TD3.TD3Continuous(state_size, n_hiddens, n_actions, action_bound, policy_noise, noise_clip,
                           exploration_noise, gamma, policy_delay, tau, actor_lr, critic_lr, device)
 actor_path_2 = "1_2_1/actor_3.pth"
