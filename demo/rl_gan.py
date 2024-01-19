@@ -226,6 +226,7 @@ def add_goal_from_state(env, label_state, collection):
 def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
               batch_size_rl, batch_size_gan, num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
     return_list = []
+    discri_list = np.array([], dtype=np.float32)
     env.reset()
     pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
     pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
@@ -242,9 +243,12 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
             for i_episode in range(int(num_episodes / n_section)):
                 raw_goals, _ = gan.sample_states_with_noise(num_new_goals)  # 生成新目标
                 old_goals = goals_buffer.sample(num_old_goals)  # 从全部目标集取老目标
+                goals_epi = torch.cat([raw_goals, old_goals], dim=0)
                 goal_label_buffer.reset()  # 重置
 
-                env.update_goals(torch.cat([raw_goals, old_goals], dim=0))  # 更新环境的可选目标
+                env.update_goals(goals_epi)  # 更新环境的可选目标
+                discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
+                discri_list.append(discri)
 
                 # 跑环境并用RL训练agent
                 for jj in range(int(num_rl)):
@@ -311,3 +315,12 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
             writer.writerow(return_list)
 
     return return_list
+
+
+def moving_average(a, window_size):
+    cumulative_sum = np.cumsum(np.insert(a, 0, 0))
+    middle = (cumulative_sum[window_size:] - cumulative_sum[:-window_size]) / window_size
+    r = np.arange(1, window_size - 1, 2)
+    begin = np.cumsum(a[:window_size - 1])[::2] / r
+    end = (np.cumsum(a[:-window_size:-1])[::2] / r)[::-1]
+    return np.concatenate((begin, middle, end))

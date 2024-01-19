@@ -151,7 +151,7 @@ class GAN:
 
     # 用discriminator预测输入
     def discriminator_predict(self, X):
-        output = torch.tensor([], dtype=torch.float32)
+        output = torch.tensor([], dtype=torch.float32).cuda()
         # for i in range(0, X.shape[0], self.batch_size):
         #     sample_size = min(self.batch_size, X.shape[0] - i)
         #     torch.cat([output, self.discr(X[i:i + sample_size]).detach()], dim=0)
