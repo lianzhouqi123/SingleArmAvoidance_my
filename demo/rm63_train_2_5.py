@@ -43,7 +43,7 @@ distance_threshold = 1e-3
 R_min = 0.22
 R_max = 0.8
 
-num_episodes = 10  # 总训练循环数
+num_episodes = 1000  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
 
