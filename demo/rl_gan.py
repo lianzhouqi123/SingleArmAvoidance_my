@@ -226,7 +226,8 @@ def add_goal_from_state(env, label_state, collection):
 def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
               batch_size_rl, batch_size_gan, num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
     return_list = []
-    discri_list = np.array([], dtype=np.float32)
+    discri_list = []
+    # discri_list = np.array([], dtype=np.float32)
     env.reset()
     pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
     pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
@@ -310,11 +311,16 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
         torch.save(agent.actor.state_dict(), f'{save_file}/actor_{time}.pth')
         torch.save(agent.critic_1.state_dict(), f'{save_file}/critic_1_{time}.pth')
         torch.save(agent.critic_2.state_dict(), f'{save_file}/critic_2_{time}.pth')
+        torch.save(gan.gan.gen.state_dict(), f'{save_file}/gen_{time}.pth')
+        torch.save(gan.gan.discr.state_dict(), f'{save_file}/discr_{time}.pth')
         with open('{}/return_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(return_list)
+        with open('{}/discri_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(discri_list)
 
-    return return_list
+    return return_list, discri_list
 
 
 def moving_average(a, window_size):

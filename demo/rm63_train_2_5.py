@@ -43,7 +43,7 @@ distance_threshold = 1e-3
 R_min = 0.22
 R_max = 0.8
 
-num_episodes = 3000  # 总训练循环数
+num_episodes = 10  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
 
@@ -80,17 +80,22 @@ save_file = "2_2_5"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
-return_list = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
-                           num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
-                           num_new_goals, num_old_goals, num_rl, num_gan, save_file)
+return_list, discri_list = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
+                                        num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
+                                        num_new_goals, num_old_goals, num_rl, num_gan, save_file)
 
-torch.save(agent.actor.state_dict(), 'actor_result_2_2_5.pth')
-torch.save(agent.critic_1.state_dict(), 'critic_1_result_2_2_5.pth')
-torch.save(agent.critic_2.state_dict(), 'critic_2_result_2_2_5.pth')
+torch.save(agent.actor.state_dict(), f'actor_result_{save_file}.pth')
+torch.save(agent.critic_1.state_dict(), f'critic_1_result_{save_file}.pth')
+torch.save(agent.critic_2.state_dict(), f'critic_2_result_{save_file}.pth')
+torch.save(gan.gan.gen.state_dict(), f'gen_result_{save_file}.pth')
+torch.save(gan.gan.discr.state_dict(), f'discr_result_{save_file}.pth')
 
-with open('return_list_2_2_5.csv', 'w', newline='') as f:
+with open('return_list_{}.csv'.format(save_file), 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(return_list)
+with open('discri_list_{}.csv'.format(save_file), 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(discri_list)
 
 episodes_list = list(range(len(return_list)))
 plt.plot(episodes_list, return_list)
@@ -104,4 +109,18 @@ plt.plot(episodes_list, mv_return)
 plt.xlabel('Episodes')
 plt.ylabel('Returns')
 plt.title('gan TD3 tran 2-5')
+plt.show()
+
+episodes_dis_list = list(range(len(discri_list)))
+plt.plot(episodes_dis_list, discri_list)
+plt.xlabel('Episodes')
+plt.ylabel('discri')
+plt.title('gan tran 2-5')
+plt.show()
+
+mv_discri = rl.moving_average(discri_list, 9)
+plt.plot(episodes_dis_list, mv_discri)
+plt.xlabel('Episodes')
+plt.ylabel('discri')
+plt.title('gan tran 2-5')
 plt.show()
