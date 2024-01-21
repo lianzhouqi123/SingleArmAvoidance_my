@@ -39,7 +39,7 @@ gen_n_hiddens = 256  # 生成器隐含层
 discr_n_hiddens = 128  # 判别器隐含层
 gen_lr = 1e-3
 discr_lr = 1e-3
-distance_threshold = 1e-3
+distance_threshold = 1.5e-3
 R_min = 0.22
 R_max = 0.8
 
@@ -80,9 +80,10 @@ save_file = "2_2_5"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
-return_list, discri_list = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
-                                        num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
-                                        num_new_goals, num_old_goals, num_rl, num_gan, save_file)
+return_list, discri_list, actor_loss_save, dis_loss_save, gen_loss_save \
+    = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
+                   num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
+                   num_new_goals, num_old_goals, num_rl, num_gan, save_file)
 
 torch.save(agent.actor.state_dict(), f'actor_result_{save_file}.pth')
 torch.save(agent.critic_1.state_dict(), f'critic_1_result_{save_file}.pth')
@@ -96,6 +97,15 @@ with open('return_list_{}.csv'.format(save_file), 'w', newline='') as f:
 with open('discri_list_{}.csv'.format(save_file), 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(discri_list)
+with open('actor_list_{}.csv'.format(save_file), 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(actor_loss_save)
+with open('dis_list_{}.csv'.format(save_file), 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(dis_loss_save)
+with open('gen_list_{}.csv'.format(save_file), 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(gen_loss_save)
 
 episodes_list = list(range(len(return_list)))
 plt.plot(episodes_list, return_list)

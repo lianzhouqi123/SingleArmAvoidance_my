@@ -76,15 +76,11 @@ class Goal_Label_Collection:
         goal = goal.reshape([1, -1])
         self.buffer.append((goal, label_good))
 
-    def sample(self, batch_size):
-        if batch_size > self.size:
-            batch_size = self.size
-
+    def sample(self, delete=False, pre=False, output_type="tensor"):
         # 采样
-        tran_idx = random.sample(range(self.size), batch_size)  # 取数组
-        transitions = [self.buffer[i] for i in tran_idx]  # 取样
-        goals, labels_good = zip(*transitions)  # 把tuple解压成list
-        self.buffer = [trans for idx, trans in enumerate(self.buffer) if idx not in tran_idx]  # 删掉取出的数
+        goals, labels_good = zip(*self.buffer)  # 把tuple解压成list
+        if delete:
+            self.reset()
 
         # 将tuple转成tensor
         goals = torch.stack(goals, dim=0).reshape([-1, self.dim_goal])
@@ -109,9 +105,9 @@ class Goal_Label_Collection:
                 # 计算label
                 n_state = torch.sum(flag)  # 总数
                 if n_state >= 5:  # 数量够多才认为数据有效
-                    label_good = (torch.sum(labels_temp * flag)/n_state).reshape([1, 1])  # 计算成功率
+                    label_good = (torch.sum(labels_temp[flag]) / n_state).reshape([1, 1])  # 计算成功率
                     # 不大不小才是真的好
-                    if self.R_min <= label_good <= self.R_max:
+                    if self.R_min <= label_good and (label_good <= self.R_max or pre):
                         label = torch.tensor([[1]], dtype=torch.float32)
                     else:
                         label = torch.tensor([[0]], dtype=torch.float32)
@@ -125,7 +121,8 @@ class Goal_Label_Collection:
                     labels_temp = labels_temp[~flag]
 
                 else:  # 不符合要求，放回buffer
-                    self.add(goal, label_of_goal)
+                    if delete:  # 没删就不用放了
+                        self.add(goal, label_of_goal)
 
                     # 删数据
                     goals_temp = goals_temp[1:]
@@ -134,7 +131,24 @@ class Goal_Label_Collection:
         else:
             raise ValueError("Goal_Label_Collection，取样时，错误distance_threshold")
 
+        if output_type == "ndarray":
+            goals_save = goals_save.numpy()
+            labels_save = labels_save.numpy()
+
         return goals_save, labels_save
+
+    # def sample_goals(self, batch_size=0, all_get=False):
+    #     goals_all, labels_all = self.sample(self.size, delete=False)
+    #     goals_good_label = np.array([trans for idx, trans in enumerate(goals_all) if labels_all[idx, :] == 1])
+    #     if goals_good_label.shape[0] > 0:
+    #         if all_get:
+    #             batch_size = goals_good_label.shape[0]
+    #         batch_index = random.sample(range(goals_good_label.shape[0]), batch_size)
+    #         sample_goals = goals_good_label[batch_index, :]
+    #     else:
+    #         sample_goals = np.array([]).reshape([-1, self.dim_goal])
+    #
+    #     return sample_goals
 
     @property
     def size(self):
@@ -147,14 +161,14 @@ class GoalGAN:
     def __init__(self, state_size, evaluator_size, state_noise_level, goal_low, goal_high, gen_n_hiddens,
                  gen_n_outputs, discr_n_hiddens, gen_lr, discr_lr, device):
         self.device = device
-        self.gan = GAN(state_size,  gen_n_hiddens, gen_n_outputs, discr_n_hiddens,
+        self.gan = GAN(state_size, gen_n_hiddens, gen_n_outputs, discr_n_hiddens,
                        evaluator_size, gen_lr, discr_lr, device)
         self.state_size = state_size
         self.evaluator_size = evaluator_size
         self.state_noise_level = state_noise_level
         self.goal_low = torch.tensor(goal_low, dtype=torch.float32).reshape([1, -1])
         self.goal_high = torch.tensor(goal_high, dtype=torch.float32).reshape([1, -1])
-        self.goal_center = (self.goal_high + self.goal_low)/2
+        self.goal_center = (self.goal_high + self.goal_low) / 2
 
     # 预训练
     def pretrain(self, states, outer_iters):
@@ -180,8 +194,8 @@ class GoalGAN:
         return self.gan.train(goals_input, labels_input, batch_size, outer_iters)
 
 
-def generate_initial_goals(env, agent, horizon=500, size=1e4):
-    current_goal = env.get_current_goal()  # 要求是1维的
+def generate_initial_goals(env, agent, GL_buffer, horizon=500, size=1e3):
+    current_goal = env.get_current_goal().reshape([-1])  # 要求是1维的
     goals_dim = current_goal.shape[0]
     goals = np.array([], dtype=np.float32).reshape(-1, goals_dim)  # 创建存goals的数组
 
@@ -195,24 +209,23 @@ def generate_initial_goals(env, agent, horizon=500, size=1e4):
             steps = 0
             done = False
             flag_cont_epi = False
-            # 随机新生成一个目标，未完成
-            env.new_target()
+            # 随机新生成一个目标
+            env.set_goal(mode="fixed_sample_mode")
             state = env.reset()[0].cuda()
+            goals_sample, labels_sample = GL_buffer.sample(delete=True, pre=True, output_type="ndarray")
+            if goals_sample.shape[0] > 0:
+                goals_good_label = np.array([trans for idx, trans in enumerate(goals_sample)
+                                             if labels_sample[idx, 0] == 1])
+                if goals_good_label.shape[0] > 0:
+                    goals = np.append(goals, goals_good_label, axis=0)
+            print(goals.shape[0], GL_buffer.size)
         else:
             action = agent.select_action(state)  # 使用策略
             next_state, _, done, terminate, info = env.step(action)
             if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
                 flag_cont_epi = True
+            add_goal_from_state(env, not flag_cont_epi, GL_buffer)  # 只能在当前状态下调用!!!
             state = next_state.cuda()
-            # 记录目标是好目标还是坏目标
-            if ~flag_cont_epi:  # 若没撞，则当前状态标为1
-                label_good = 1
-            else:
-                label_good = 0
-            if label_good:
-                goal_from_state = env.state2goal().reshape([1, -1])  # 将当前状态变为目标
-                if np.all((env.goal_low <= goal_from_state) & (goal_from_state <= env.goal_high)):
-                    goals = np.append(goals, goal_from_state, axis=0)  # 存数
 
     return goals
 
@@ -227,9 +240,13 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
               batch_size_rl, batch_size_gan, num_iteration, num_new_goals, num_old_goals, num_rl, num_gan, save_file):
     return_list = []
     discri_list = []
-    # discri_list = np.array([], dtype=np.float32)
+    dis_loss_save = []
+    gen_loss_save = []
+    actor_loss_save = []
+    actor_loss = 0
+    env.set_goal(mode="fixed_sample_mode")
     env.reset()
-    pretrain_goals = generate_initial_goals(env, agent)  # 获取预训练的目标
+    pretrain_goals = generate_initial_goals(env, agent, goal_label_buffer)  # 获取预训练的目标
     pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
     goals_buffer.add(pretrain_goals)
     pretrain_goals = pretrain_goals.cuda()
@@ -245,16 +262,14 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                 raw_goals, _ = gan.sample_states_with_noise(num_new_goals)  # 生成新目标
                 old_goals = goals_buffer.sample(num_old_goals)  # 从全部目标集取老目标
                 goals_epi = torch.cat([raw_goals, old_goals], dim=0)
-                goal_label_buffer.reset()  # 重置
 
                 env.update_goals(goals_epi)  # 更新环境的可选目标
                 discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
-                discri_list.append(discri)
+                discri_list = np.append(discri_list, discri)
 
                 # 跑环境并用RL训练agent
                 for jj in range(int(num_rl)):
-                    goal = env.set_goal()
-                    goal = torch.tensor(goal, dtype=torch.float32)
+                    goal = env.set_goal(mode="point_set")
                     episode_return = 0
                     env.change_goal = False
                     state = env.reset()[0].cuda()
@@ -267,7 +282,7 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
                         if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
                             flag_cont_epi = True
-                        add_goal_from_state(env, flag_cont_epi, goal_label_buffer)  # 只能在当前状态下调用!!!
+                        add_goal_from_state(env, not flag_cont_epi, goal_label_buffer)  # 只能在当前状态下调用!!!
                         replay_buffer.add(state, action, reward, next_state.cuda(), done)  # 加入RL的buffer
                         episode_return += reward
                         state = next_state.cuda()
@@ -278,33 +293,35 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                                 transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
                                                    'next_states': b_ns.cuda(),
                                                    'rewards': b_r.cuda(), 'dones': b_d.cuda()}
-                                agent.update_parameters(transition_dict, iidx)  # 训练agent
+                                actor_loss = agent.update_parameters(transition_dict, iidx)  # 训练agent
+                                # actor_loss_save.append(actor_loss)
 
                     if terminate:
                         i_terminate += 1
                     if flag_cont_epi:
                         i_contact += 1
-                    # 记录目标是好目标还是坏目标
-                    if ~flag_cont_epi and terminate:  # 若没撞且到达，则当前状态标为1
-                        label_good = 1
-                    else:
-                        label_good = 0
-                    goal_label_buffer.add(goal, label_good)  # 存goal, label
+
                     return_list = np.append(return_list, episode_return)
 
                 # 训练gan
-                goals_with_label, labels_of_goals = goal_label_buffer.sample(goal_label_buffer.size)  # 全取
+                goals_with_label, labels_of_goals = goal_label_buffer.sample(delete=True)  # 全取
                 for kk in range(int(num_gan)):
-                    gan.train(goals_with_label, labels_of_goals, batch_size_gan)
+                    dis_loss, gen_loss = gan.train(goals_with_label, labels_of_goals, batch_size_gan)
+                    # dis_loss_save.append(dis_loss)
+                    # gen_loss_save.append(gen_loss)
 
                 flag_goals = (labels_of_goals == 1).reshape([-1])
                 goals_buffer.add(goals_with_label[flag_goals])
 
                 if (i_episode + 1) % 1 == 0:
-                    pbar.set_postfix({'episode': '%d' % (num_episodes / n_section * i + i_episode + 1),
-                                      'return': '%.3f' % np.mean(return_list[-1:]),
-                                      'terminate': '%d' % i_terminate,
-                                      'contact': '%d' % i_contact})
+                    pbar.set_postfix({'epi': '%d' % (num_episodes / n_section * i + i_episode + 1),
+                                      'rtn': '%.3f' % np.mean(return_list[-1:]),
+                                      'term': '%d' % i_terminate,
+                                      'cnt': '%d' % i_contact,
+                                      'dscr': '%.7f' % discri,
+                                      # 'actor_loss': '%.6f' % actor_loss,
+                                      # 'dis_loss': '%.6f' % dis_loss
+                                      })
                 pbar.update(1)
                 i_episode_all += 1
         time = i
@@ -319,8 +336,17 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
         with open('{}/discri_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(discri_list)
+        with open('{}/actor_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(actor_loss_save)
+        with open('{}/dis_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(dis_loss_save)
+        with open('{}/gen_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(gen_loss_save)
 
-    return return_list, discri_list
+    return return_list, discri_list, actor_loss, dis_loss_save, gen_loss_save
 
 
 def moving_average(a, window_size):

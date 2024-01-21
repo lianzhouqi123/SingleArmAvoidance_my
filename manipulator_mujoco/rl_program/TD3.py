@@ -154,10 +154,10 @@ class TD3Continuous:
         loss_q2.backward()
         self.critic_2_optimizer.step()
 
+        # compute actor loss
+        actor_loss = - self.critic_1(states, self.actor(states)).mean()
         if iidx % self.policy_delay == 0:
             # relay update
-            # compute actor loss
-            actor_loss = - self.critic_1(states, self.actor(states)).mean()
 
             # optimize the actor
             self.actor_optimizer.zero_grad()
@@ -167,3 +167,5 @@ class TD3Continuous:
             self.soft_update(self.actor, self.actor_target)
             self.soft_update(self.critic_1, self.critic_1_target)
             self.soft_update(self.critic_2, self.critic_2_target)
+
+        return actor_loss

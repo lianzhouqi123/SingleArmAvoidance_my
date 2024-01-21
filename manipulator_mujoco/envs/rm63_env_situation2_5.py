@@ -230,13 +230,16 @@ class Rm63Env_s2_5(gym.Env):
             # self._physics.bind(self._arm.joints).qacc[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         # init the position of the target
-        if not self.change_goal:
+        # if self.ago_env_goal:
+        #     self.target_sample(mode="fixed_sample_mode")
+        # else:
+        #     if not self.change_goal:
             self.target_sample(mode="fixed")
-        else:
-            if self.target_set is None:
-                self.target_sample(mode="range_sample_mode", pos_range=self.pose_range, obs_flag=False)
-            else:
-                self.target_sample(mode="point_set", point_set=self.target_set)
+            # else:
+            #     if self.target_set is None:
+            #         self.target_sample(mode="range_sample_mode", pos_range=self.pose_range, obs_flag=False)
+            #     else:
+            #         self.target_sample(mode="point_set", point_set=self.target_set)
 
         if self._render_mode == "human":
             self._render_frame()
@@ -489,10 +492,12 @@ class Rm63Env_s2_5(gym.Env):
         else:
             self.target_set = goals
 
-    def set_goal(self):
-        if self.target_set is None:
+    def set_goal(self, mode):
+        if mode == "range_sample_mode":
             goal = self.target_sample(mode="range_sample_mode", pos_range=self.pose_range, obs_flag=False)
-        else:
+        elif mode == "fixed_sample_mode":
+            goal = self.target_sample(mode="fixed_sample_mode", pos_range=self.pose_range, obs_flag=False)
+        elif mode == "point_set":
             goal = self.target_sample(mode="point_set", point_set=self.target_set)
         goal = goal[0:3]
 
