@@ -60,7 +60,7 @@ class GoalCollection:
 
 
 class Goal_Label_Collection:
-    def __init__(self, dim_goal, distance_threshold=None, R_min=0.22, R_max=0.8):
+    def __init__(self, dim_goal, distance_threshold=None, R_min=0.22, R_max=0.9):
         self.buffer = []
         self.dim_goal = dim_goal
         self.distance_threshold = distance_threshold
@@ -181,7 +181,7 @@ class GoalGAN:
         return goals, noise
 
     def add_noise_to_states(self, goals):
-        noise = torch.randn_like(goals)
+        noise = torch.randn_like(goals) * self.state_noise_level
         goals += noise
         return torch.clamp(goals, min=self.goal_low, max=self.goal_high)
 
@@ -191,10 +191,11 @@ class GoalGAN:
         return goals, noise
 
     def train(self, goals_input, labels_input, batch_size, outer_iters=1):
-        return self.gan.train(goals_input, labels_input, batch_size, outer_iters)
+        goals_adj = (goals_input - self.goal_center)/(self.goal_high - self.goal_center)
+        return self.gan.train(goals_adj, labels_input, batch_size, outer_iters)
 
 
-def generate_initial_goals(env, agent, GL_buffer, horizon=500, size=1e3):
+def generate_initial_goals(env, agent, GL_buffer, horizon=500, size=0.3e3):
     current_goal = env.get_current_goal().reshape([-1])  # 要求是1维的
     goals_dim = current_goal.shape[0]
     goals = np.array([], dtype=np.float32).reshape(-1, goals_dim)  # 创建存goals的数组
@@ -250,7 +251,7 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
     pretrain_goals = torch.tensor(pretrain_goals, dtype=torch.float32)
     goals_buffer.add(pretrain_goals)
     pretrain_goals = pretrain_goals.cuda()
-    gan.pretrain(pretrain_goals, 500)  # 预训练
+    gan.pretrain(pretrain_goals, 300)  # 预训练
 
     i_terminate = 0
     i_episode_all = 0
@@ -264,6 +265,7 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                 goals_epi = torch.cat([raw_goals, old_goals], dim=0)
 
                 env.update_goals(goals_epi)  # 更新环境的可选目标
+                # env.update_goals(old_goals)  # 更新环境的可选目标
                 discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
                 discri_list = np.append(discri_list, discri)
 
@@ -305,8 +307,14 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
 
                 # 训练gan
                 goals_with_label, labels_of_goals = goal_label_buffer.sample(delete=True)  # 全取
+                # n_goals_with_label = min(goals_with_label.shape[0], goals_buffer.size)
+                # goals_with_label1 = goals_buffer.sample(n_goals_with_label)
+                # labels_of_goals1 = torch.ones([n_goals_with_label, 1])
+                # goals_with_label_train = torch.cat([goals_with_label, goals_with_label1], dim=0)
+                # labels_of_goals_train = torch.cat([labels_of_goals, labels_of_goals1], dim=0)
                 for kk in range(int(num_gan)):
                     dis_loss, gen_loss = gan.train(goals_with_label, labels_of_goals, batch_size_gan)
+                    # dis_loss, gen_loss = gan.train(goals_with_label_train, labels_of_goals_train, batch_size_gan)
                     # dis_loss_save.append(dis_loss)
                     # gen_loss_save.append(gen_loss)
 

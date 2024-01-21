@@ -33,6 +33,7 @@ class Generator(nn.Module):
         self.lin2 = nn.Linear(n_hiddens, n_hiddens)
         self.act2 = nn.LeakyReLU(0.01)
         self.lin3 = nn.Linear(n_hiddens, n_outputs)
+        self.act3 = nn.Tanh()
 
     def forward(self, x):
         x = self.lin1(x)
@@ -40,6 +41,7 @@ class Generator(nn.Module):
         x = self.lin2(x)
         x = self.act2(x)
         x = self.lin3(x)
+        x = self.act3(x)
 
         return x
 
@@ -52,7 +54,7 @@ class Discriminator(nn.Module):
         self.lin2 = nn.Linear(n_hiddens, n_hiddens)
         self.act2 = nn.LeakyReLU(0.01)
         self.lin3 = nn.Linear(n_hiddens, n_outputs)
-        self.act3 = nn.Sigmoid()
+        # self.act3 = nn.Tanh()
 
     def forward(self, x):
         x = self.lin1(x)
@@ -60,7 +62,7 @@ class Discriminator(nn.Module):
         x = self.lin2(x)
         x = self.act2(x)
         x = self.lin3(x)
-        x = self.act3(x)
+        # x = self.act3(x)
 
         return x
 

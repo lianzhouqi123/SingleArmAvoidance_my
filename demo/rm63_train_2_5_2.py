@@ -76,7 +76,7 @@ replay_buffer = rl.ReplayBuffer(buffer_size)
 
 goal_label_buffer = rl.Goal_Label_Collection(goal_size, distance_threshold, R_min, R_max)
 
-save_file = "2_2_5"
+save_file = "2_2_5_2"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
@@ -111,26 +111,26 @@ episodes_list = list(range(len(return_list)))
 plt.plot(episodes_list, return_list)
 plt.xlabel('Episodes')
 plt.ylabel('Returns')
-plt.title('gan TD3 tran 2-5')
+plt.title('gan TD3 tran 2-5-2')
 plt.show()
 
 mv_return = rl.moving_average(return_list, 9)
 plt.plot(episodes_list, mv_return)
 plt.xlabel('Episodes')
 plt.ylabel('Returns')
-plt.title('gan TD3 tran 2-5')
+plt.title('gan TD3 tran 2-5-2')
 plt.show()
 
 episodes_dis_list = list(range(len(discri_list)))
 plt.plot(episodes_dis_list, discri_list)
 plt.xlabel('Episodes')
 plt.ylabel('discri')
-plt.title('gan tran 2-5')
+plt.title('gan tran 2-5-2')
 plt.show()
 
 mv_discri = rl.moving_average(discri_list, 9)
 plt.plot(episodes_dis_list, mv_discri)
 plt.xlabel('Episodes')
 plt.ylabel('discri')
-plt.title('gan tran 2-5')
+plt.title('gan tran 2-5-2')
 plt.show()
