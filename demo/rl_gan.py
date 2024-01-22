@@ -304,7 +304,8 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         i_contact += 1
 
                     return_list = np.append(return_list, episode_return)
-                    print("rtn={:.3f}, term={:d}, cnt={:d}".format(np.mean(return_list[-1:]), i_terminate, i_contact))
+                    print("i={:d},rtn={:.3f}, term={:d}, cnt={:d}".format(iidx, np.mean(return_list[-1:]),
+                                                                          i_terminate, i_contact))
 
                 # 训练gan
                 goals_with_label, labels_of_goals = goal_label_buffer.sample(delete=True)  # 全取
