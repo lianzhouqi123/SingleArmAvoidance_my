@@ -39,7 +39,7 @@ gen_n_hiddens = 256  # 生成器隐含层
 discr_n_hiddens = 128  # 判别器隐含层
 gen_lr = 1e-3
 discr_lr = 1e-3
-distance_threshold = 1.5e-3
+distance_threshold = 3e-3
 R_min = 0.22
 R_max = 0.9
 

@@ -304,6 +304,7 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         i_contact += 1
 
                     return_list = np.append(return_list, episode_return)
+                    print("rtn={:.3f}, term={:d}, cnt={:d}".format(np.mean(return_list[-1:]), i_terminate, i_contact))
 
                 # 训练gan
                 goals_with_label, labels_of_goals = goal_label_buffer.sample(delete=True)  # 全取
@@ -327,6 +328,8 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                                       'term': '%d' % i_terminate,
                                       'cnt': '%d' % i_contact,
                                       'dscr': '%.7f' % discri,
+                                      'GLsize': '%d' % goal_label_buffer.size,
+                                      'GBsize': '%d' % goals_buffer.size,
                                       # 'actor_loss': '%.6f' % actor_loss,
                                       # 'dis_loss': '%.6f' % dis_loss
                                       })
@@ -344,17 +347,17 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
         with open('{}/discri_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(discri_list)
-        with open('{}/actor_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(actor_loss_save)
-        with open('{}/dis_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(dis_loss_save)
-        with open('{}/gen_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(gen_loss_save)
+        # with open('{}/actor_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(actor_loss_save)
+        # with open('{}/dis_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(dis_loss_save)
+        # with open('{}/gen_list_{}.csv'.format(save_file, time), 'w', newline='') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(gen_loss_save)
 
-    return return_list, discri_list, actor_loss, dis_loss_save, gen_loss_save
+    return return_list, discri_list#, actor_loss, dis_loss_save, gen_loss_save
 
 
 def moving_average(a, window_size):
