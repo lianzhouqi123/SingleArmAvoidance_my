@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # 测试参数
 env_id = "Rm63Env-s2-2"
 # actor_path = "actor_result_2_2_3.pth"
-actor_path = "2_2_5/actor_6.pth"
+actor_path = "2_2_5/actor_8.pth"
 n_episodes = 1000  # 测试循环数
 test_mode = "correct_ratio"  # 正确率模式，不显示图形，不进行延时
 # test_mode = "show"  # 展示模式，显示图形，并对每步进行延时
