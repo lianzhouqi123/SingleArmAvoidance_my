@@ -34,16 +34,16 @@ policy_delay = 2
 
 # gan 参数
 evaluator_size = 1
-state_noise_level = 0.05
+state_noise_level = 0.01
 gen_n_hiddens = 256  # 生成器隐含层
 discr_n_hiddens = 128  # 判别器隐含层
 gen_lr = 1e-3
 discr_lr = 1e-3
 distance_threshold = 2e-3
-R_min = 0.22
-R_max = 0.9
+R_min = 0.05
+R_max = 0.95
 
-num_episodes = 30  # 总训练循环数
+num_episodes = 200  # 总训练循环数
 buffer_size = 2 ** 15  # 样本缓存数目
 minimal_size = 10000  # 最小训练总样本数
 
@@ -51,9 +51,11 @@ batch_size_rl = 128
 batch_size_gan = 64
 num_new_goals = 200
 num_old_goals = 100
+num_arb_goals = 200
 num_rl = 500
 num_gan = 200
 num_iteration = 1  # 一回合训练次数
+num_rl_per_train = 20
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
@@ -74,7 +76,7 @@ goals_buffer = rl.GoalCollection(goal_size, distance_threshold)
 
 replay_buffer = rl.ReplayBuffer(buffer_size)
 
-goal_label_buffer = rl.Goal_Label_Collection(goal_size, distance_threshold, R_min, R_max)
+goal_label_buffer = rl.Goal_Label_Collection(goal_size, goal_low, goal_high, distance_threshold, R_min, R_max)
 
 save_file = "2_2_5"
 if not os.path.exists(save_file):
@@ -83,8 +85,8 @@ if not os.path.exists(save_file):
 # return_list, discri_list, actor_loss_save, dis_loss_save, gen_loss_save \
 return_list, discri_list \
     = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
-                   num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration,
-                   num_new_goals, num_old_goals, num_rl, num_gan, save_file)
+                   num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration, num_rl_per_train,
+                   num_new_goals, num_old_goals, num_arb_goals, num_rl, num_gan, save_file)
 
 torch.save(agent.actor.state_dict(), f'actor_result_{save_file}.pth')
 torch.save(agent.critic_1.state_dict(), f'critic_1_result_{save_file}.pth')
