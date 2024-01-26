@@ -322,7 +322,7 @@ def add_goal_from_state(env, label_state, collection):
 
 
 def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, num_episodes, minimal_size,
-              batch_size_rl, batch_size_gan, num_iteration, num_rl_per_train, num_new_goals, num_old_goals,
+              batch_size_rl, batch_size_gan, num_iteration, num_sample, num_new_goals, num_old_goals,
               num_arb_goals, num_rl, num_gan, save_file):
     return_list = []
     discri_list = []
@@ -348,20 +348,17 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
             for i_episode in range(int(num_episodes / n_section)):
                 raw_goals, _ = gan.sample_states_with_noise(num_new_goals)  # 生成新目标
                 old_goals = goals_buffer.sample(num_old_goals)  # 从全部目标集取老目标
-                arb_goals = torch.tensor(env.goal_low) + torch.rand([num_arb_goals, env.goal_space.shape[0]]) \
-                            * torch.tensor(env.goal_high - env.goal_low)
-                goals_epi = torch.cat([raw_goals, old_goals, arb_goals], dim=0)
+                # arb_goals = torch.tensor(env.goal_low) + torch.rand([num_arb_goals, env.goal_space.shape[0]]) \
+                #             * torch.tensor(env.goal_high - env.goal_low)
+                goals_epi = torch.cat([raw_goals, old_goals ], dim=0)
 
                 env.update_goals(goals_epi)  # 更新环境的可选目标
-                # env.update_goals(old_goals)  # 更新环境的可选目标
                 discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
                 discri_list = np.append(discri_list, discri)
 
                 # 跑环境并用RL训练agent
-                for jj in range(int(num_rl * num_rl_per_train)):
+                for jj in range(int(num_rl)):
                     goal = env.set_goal(mode="point_set")
-                    # if not np.all((env.goal_low <= goal) & (goal <= env.goal_high)):
-                    #     a = 1
                     episode_return = 0
                     goal_label_buffer.reset_new()
                     env.change_goal = False
@@ -378,16 +375,15 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         episode_return += reward
                         state = next_state.cuda()
                         # 训练RL
-                        if jj % num_rl_per_train == 0:
-                            if replay_buffer.size() > minimal_size:
-                                for j in range(num_iteration):
-                                    b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size_rl)  # 采样
-                                    transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
-                                                       'next_states': b_ns.cuda(),
-                                                       'rewards': b_r.cuda(), 'dones': b_d.cuda()}
-                                    actor_loss = agent.update_parameters(transition_dict, iidx)  # 训练agent
-                                    iidx += 1
-                                    # actor_loss_save.append(actor_loss)
+                        if replay_buffer.size() > minimal_size:
+                            for j in range(num_iteration):
+                                b_s, b_a, b_r, b_ns, b_d = replay_buffer.sample(batch_size_rl)  # 采样
+                                transition_dict = {'states': b_s.cuda(), 'actions': b_a.cuda(),
+                                                   'next_states': b_ns.cuda(),
+                                                   'rewards': b_r.cuda(), 'dones': b_d.cuda()}
+                                actor_loss = agent.update_parameters(transition_dict, iidx)  # 训练agent
+                                iidx += 1
+                                # actor_loss_save.append(actor_loss)
 
                     if terminate:
                         i_terminate += 1
@@ -399,10 +395,32 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                         goal_label_buffer.add(goal, False)
 
                     return_list = np.append(return_list, episode_return)
-                    if jj % num_rl_per_train == 0:
-                        print("jj={:.3f},rtn={:.3f}, term={:.3f}, cnt={:.3f}, GBsize={:d}"
-                              .format(jj/num_rl_per_train, np.mean(return_list[-1:]),
-                                      i_terminate/num_rl_per_train, i_contact/num_rl_per_train, goals_buffer.size))
+                    print("jj={:d}, rtn={:.3f}, term={:d}, cnt={:d}, GBsize={:d}"
+                          .format(jj, np.mean(return_list[-1:]), i_terminate, i_contact, goals_buffer.size))
+
+                # 取样
+                for k in range(int(num_sample)):
+                    goal = env.set_goal(mode="range_sample_mode")
+                    goal_label_buffer.reset_new()
+                    env.change_goal = False
+                    state = env.reset()[0].cuda()
+                    done = False
+                    flag_cont_epi = False
+                    while not done:
+                        action = agent.select_action(state)  # 使用策略
+                        next_state, reward, done, terminate, info = env.step(action)  # 使用动作走一步
+                        if env.flag_cont or flag_cont_epi:  # 判断是否在此步之前发生碰撞
+                            flag_cont_epi = True
+                        state = next_state.cuda()
+
+                    if terminate:
+                        i_terminate += 1
+                    if flag_cont_epi:
+                        i_contact += 1
+                    if terminate and not flag_cont_epi:
+                        goal_label_buffer.add(goal, True)
+                    else:
+                        goal_label_buffer.add(goal, False)
 
                 # 训练gan
                 goals_with_label, labels_of_goals = goal_label_buffer.sample()  # 全取

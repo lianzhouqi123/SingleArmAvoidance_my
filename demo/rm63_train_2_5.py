@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import os
+import time
 
 # 环境参数
 my_render_mode = 'human'
@@ -55,7 +56,7 @@ num_arb_goals = 200
 num_rl = 500
 num_gan = 200
 num_iteration = 1  # 一回合训练次数
-num_rl_per_train = 20
+num_sample = 1e4
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
@@ -78,15 +79,18 @@ replay_buffer = rl.ReplayBuffer(buffer_size)
 
 goal_label_buffer = rl.Goal_Label_Collection(goal_size, goal_low, goal_high, distance_threshold, R_min, R_max)
 
-save_file = "2_2_5"
+save_file = "2_2_5_1"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 
+start_time = time.time()
 # return_list, discri_list, actor_loss_save, dis_loss_save, gen_loss_save \
 return_list, discri_list \
     = rl.run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer,
-                   num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration, num_rl_per_train,
+                   num_episodes, minimal_size, batch_size_rl, batch_size_gan, num_iteration, num_sample,
                    num_new_goals, num_old_goals, num_arb_goals, num_rl, num_gan, save_file)
+end_time = time.time()
+print(end_time - start_time)
 
 torch.save(agent.actor.state_dict(), f'actor_result_{save_file}.pth')
 torch.save(agent.critic_1.state_dict(), f'critic_1_result_{save_file}.pth')
