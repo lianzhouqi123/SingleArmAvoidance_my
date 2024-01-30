@@ -56,7 +56,7 @@ num_arb_goals = 200
 num_rl = 500
 num_gan = 200
 num_iteration = 1  # 一回合训练次数
-num_sample = 1e4
+num_sample = 1e5
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
@@ -79,7 +79,7 @@ replay_buffer = rl.ReplayBuffer(buffer_size)
 
 goal_label_buffer = rl.Goal_Label_Collection(goal_size, goal_low, goal_high, distance_threshold, R_min, R_max)
 
-save_file = "2_2_5_1"
+save_file = "2_2_5_3"
 if not os.path.exists(save_file):
     os.mkdir(save_file)
 

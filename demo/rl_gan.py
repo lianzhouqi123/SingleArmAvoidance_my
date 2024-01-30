@@ -354,7 +354,10 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
 
                 env.update_goals(goals_epi)  # 更新环境的可选目标
                 discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
+                discri_old = torch.mean(gan.gan.discriminator_predict(old_goals.cuda()).cpu()).numpy()
+                discri_raw = torch.mean(gan.gan.discriminator_predict(raw_goals.cuda()).cpu()).numpy()
                 discri_list = np.append(discri_list, discri)
+                print("discri={}, discri_old={}, discri_raw={}".format(discri, discri_old, discri_raw))
 
                 # 跑环境并用RL训练agent
                 for jj in range(int(num_rl)):
