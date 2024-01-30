@@ -350,7 +350,7 @@ def run_train(env, agent, gan, goals_buffer, replay_buffer, goal_label_buffer, n
                 old_goals = goals_buffer.sample(num_old_goals)  # 从全部目标集取老目标
                 # arb_goals = torch.tensor(env.goal_low) + torch.rand([num_arb_goals, env.goal_space.shape[0]]) \
                 #             * torch.tensor(env.goal_high - env.goal_low)
-                goals_epi = torch.cat([raw_goals, old_goals ], dim=0)
+                goals_epi = torch.cat([raw_goals, old_goals], dim=0)
 
                 env.update_goals(goals_epi)  # 更新环境的可选目标
                 discri = torch.mean(gan.gan.discriminator_predict(goals_epi.cuda()).cpu()).numpy()
